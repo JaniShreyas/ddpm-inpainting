@@ -1,2 +1,0 @@
-This will be a complete experimentation + understanding project regarding ddpms in general followed by their applications in inpainting specifically <br>
-I will first train some simple models from scratch followed by deploying a large pretrained model for actual use
