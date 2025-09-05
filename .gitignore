@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Datasets
+datasets/
+
+# Checkpoints (will be available in dvc later)
+checkpoints/
