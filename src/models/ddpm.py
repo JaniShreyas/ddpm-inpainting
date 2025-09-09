@@ -16,17 +16,23 @@ class DiffusionModel(nn.Module):
         T = 200
         beta_start = 1e-4
         beta_end = 0.02
-        self.betas = torch.linspace(beta_start, beta_end, T)
+        betas = torch.linspace(beta_start, beta_end, T)
 
-        self.alphas = 1.0 - self.betas
-        self.alphas_cumprod = torch.cumprod(self.alphas, dim=0)
+        alphas = 1.0 - betas
+        alphas_cumprod = torch.cumprod(alphas, dim=0)
 
         # Just moves alphas_cumprod forward by 1, removes right most, and sets first value to 1
-        self.alphas_cumprod_prev = F.pad(self.alphas_cumprod[:-1], (1, 0), value=1.0)
+        alphas_cumprod_prev = F.pad(alphas_cumprod[:-1], (1, 0), value=1.0)
         # The variance values needed during sampling
-        self.posterior_variance = (
-            self.betas * (1.0 - self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
+        posterior_variance = (
+            betas * (1.0 - alphas_cumprod_prev) / (1.0 - alphas_cumprod)
         )
+
+        self.register_buffer('betas', betas)
+        self.register_buffer('alphas', alphas)
+        self.register_buffer('alphas_cumprod', alphas_cumprod)
+        self.register_buffer('alphas_cumprod_prev', alphas_cumprod_prev)
+        self.register_buffer('posterior_variance', posterior_variance)
 
     def q_sample(self, x_start, t, noise=None):
         if noise is None:
