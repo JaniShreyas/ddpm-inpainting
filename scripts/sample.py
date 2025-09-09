@@ -10,7 +10,7 @@ def main():
             "in_channels": 1,
             "out_channels": 1,
             "base_channels": 32,
-            "channel_multipliers": (1, 2, 4),
+            "channel_multipliers": (1, 2),
         }
     }
 
