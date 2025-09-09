@@ -12,5 +12,6 @@ wheels/
 # Datasets
 datasets/
 
-# Checkpoints (will be available in dvc later)
+# dvc stuff
 checkpoints/
+output/
