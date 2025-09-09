@@ -12,6 +12,7 @@ def main():
     # Read config
     # Temporary config setup here. Replace with Hydra config management [FIX]
     config = {
+        "device": "cuda" if torch.cuda.is_available() else "cpu",
         "dataset": {"name": "mnist", "batch_size": 128, "image_size": 32},
         "model": {
             "in_channels": 1,
@@ -22,7 +23,6 @@ def main():
         "optimizer": {"lr": 1e-4},
         "training": {
             "epochs": 10,
-            "device": "cuda" if torch.cuda.is_available() else "cpu",
         },
     }
 
@@ -41,7 +41,7 @@ def main():
         model=model,
         dataloader=train_dataloader,
         optimizer=optimizer,
-        **config["training"],
+        device=config["device"] ** config["training"],
     )
 
     trainer.train()
