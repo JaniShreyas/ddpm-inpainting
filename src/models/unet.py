@@ -60,6 +60,10 @@ class UNet(nn.Module):
         time_emb_dim: int = 64,
     ):
         super().__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
         self.time_mlp = nn.Sequential(
             SinusoidalPositionEmbeddings(time_emb_dim),
             nn.Linear(time_emb_dim, time_emb_dim),
@@ -67,7 +71,7 @@ class UNet(nn.Module):
         )
 
         # Input
-        self.initial_conv = nn.Conv2d(in_channels=in_channels, out_channels=base_channels, kernel_size=3, padding=1)
+        self.initial_conv = nn.Conv2d(in_channels=self.in_channels, out_channels=base_channels, kernel_size=3, padding=1)
         
         channels = []
         for multiplier in channel_multipliers:
@@ -99,7 +103,7 @@ class UNet(nn.Module):
             self.ups.append(ResidualBlock(reversed_channels[i], reversed_channels[i+1], time_emb_dim))
 
         # Output
-        self.output = nn.Conv2d(base_channels, out_channels, kernel_size=1)
+        self.output = nn.Conv2d(base_channels, self.out_channels, kernel_size=1)
 
     def forward(self, x, t):
         t_emb = self.time_mlp(t)
