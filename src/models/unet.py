@@ -69,7 +69,7 @@ class UNet(nn.Module):
         # Input
         self.initial_conv = nn.Conv2d(in_channels=in_channels, out_channels=base_channels, kernel_size=3, padding=1)
         
-        channels = [base_channels]
+        channels = []
         for multiplier in channel_multipliers:
             channels.append(base_channels*multiplier)
         
@@ -77,17 +77,22 @@ class UNet(nn.Module):
         self.downs = nn.ModuleList()
         self.pools = nn.ModuleList([nn.MaxPool2d(2) for _ in range(len(channel_multipliers))])
 
-        for i in range(len(channels) - 1):
-            self.downs.append(ResidualBlock(channels[i], channels[i+1], time_emb_dim))
+        forward_channels = [base_channels] + channels
+
+        for i in range(len(forward_channels) - 1):
+            self.downs.append(ResidualBlock(forward_channels[i], forward_channels[i+1], time_emb_dim))
 
         # Bottleneck
-        self.bottleneck = ResidualBlock(channels[-1], channels[-1], time_emb_dim)
+        # Doubling because it helps with keeping symmetry. The other option is to change the in_channels of self.ups elements
+        bottleneck_in = channels[-1]
+        bottleneck_out = bottleneck_in * 2
+        self.bottleneck = ResidualBlock(bottleneck_in, bottleneck_out, time_emb_dim)
 
         # Decoder
         self.ups = nn.ModuleList()
         self.up_trans = nn.ModuleList()
 
-        reversed_channels = list(reversed(channels))
+        reversed_channels = [bottleneck_out] + list(reversed(channels))
         for i in range(len(reversed_channels) - 1):
             self.up_trans.append(nn.ConvTranspose2d(reversed_channels[i], reversed_channels[i+1], kernel_size=2, stride=2))
             # The input to the residual block will be doubled (after the skip connection is concatenated to the up_trans output)
