@@ -18,25 +18,34 @@ class DiffusionModel(nn.Module):
         beta_end = 0.02
         self.betas = torch.linspace(beta_start, beta_end, T)
 
-        self.alphas = 1. - self.betas
+        self.alphas = 1.0 - self.betas
         self.alphas_cumprod = torch.cumprod(self.alphas, dim=0)
 
         # Just moves alphas_cumprod forward by 1, removes right most, and sets first value to 1
-        self.alphas_cumprod_prev = F.pad(self.alphas_cumprod[:-1], (1,0), value=1.0)
+        self.alphas_cumprod_prev = F.pad(self.alphas_cumprod[:-1], (1, 0), value=1.0)
         # The variance values needed during sampling
-        self.posterior_variance = self.betas * (1. - self.alphas_cumprod_prev) / (1. - self.alphas_cumprod)
+        self.posterior_variance = (
+            self.betas * (1.0 - self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
+        )
 
     def q_sample(self, x_start, t, noise=None):
         if noise is None:
             noise = torch.randn_like(x_start)
 
-        sqrt_alphas_cumprod_t = self.alphas_cumprod[t].sqrt().view(x_start.shape[0], 1, 1, 1)
-        sqrt_one_minus_alphas_cumprod_t = (1. - self.alphas_cumprod[t]).sqrt().view(x_start.shape[0], 1, 1, 1)
+        sqrt_alphas_cumprod_t = (
+            self.alphas_cumprod[t].sqrt().view(x_start.shape[0], 1, 1, 1)
+        )
+        sqrt_one_minus_alphas_cumprod_t = (
+            (1.0 - self.alphas_cumprod[t]).sqrt().view(x_start.shape[0], 1, 1, 1)
+        )
 
-        return sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise, noise
+        return (
+            sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise,
+            noise,
+        )
 
     def forward(self, x):
-        B,C,H,W = x.shape
+        B, C, H, W = x.shape
         # Uniformly sample t
         t = torch.randint(0, len(self.betas), (B,), device=x.device).long()
 
@@ -49,17 +58,21 @@ class DiffusionModel(nn.Module):
         # Calculate loss
         loss = F.mse_loss(noise, predicted_noise)
         return loss
-    
+
     @torch.no_grad()
-    def sample(self, num_images, image_size, device='cuda'):
+    def sample(self, num_images, image_size, device="cuda"):
         """
         Inference method for generating new images
         """
         # Start with pure random noise
-        x = torch.randn(num_images, self.unet.in_channels, image_size, image_size, device=device)
+        x = torch.randn(
+            num_images, self.unet.in_channels, image_size, image_size, device=device
+        )
 
         # The reverse diffusion loop. Calculate and remove noise
-        for t in tqdm(reversed(range(0, len(self.betas))), desc="Sampling", total=len(self.betas)):
+        for t in tqdm(
+            reversed(range(0, len(self.betas))), desc="Sampling", total=len(self.betas)
+        ):
             t_tensor = torch.full((num_images,), t, device=device, dtype=torch.long)
 
             # Predict the noise from the UNet
@@ -82,5 +95,5 @@ class DiffusionModel(nn.Module):
                 x = mean
 
         # Denormalize images from [-1, 1] to [0, 1] for viewing and saving
-        x = (x.clamp(-1,1) + 1) / 2
+        x = (x.clamp(-1, 1) + 1) / 2
         return x

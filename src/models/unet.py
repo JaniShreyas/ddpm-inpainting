@@ -12,7 +12,7 @@ class SinusoidalPositionEmbeddings(nn.Module):
         device = time.device
         half_dim = self.dim // 2
         embeddings = math.log(10_000) / (half_dim - 1)
-        embeddings = torch.exp(torch.arange(half_dim, device=device) * -embeddings)
+        embeddings = torch.exp(torch.arange(half_dim, dtype=torch.float32, device=device) * -embeddings)
         embeddings = time[:, None] * embeddings[None, :]
         embeddings = torch.cat((embeddings.sin(), embeddings.cos()), dim=-1)
         return embeddings
@@ -39,15 +39,15 @@ class ResidualBlock(nn.Module):
             else nn.Identity()
         )
 
-        def forward(self, x, t):
-            # Here, t already comes after SinusoidalEmbedding + a linear layer (and relu).
-            # This time_mlp is used to change shape of the vector (pretty sure)
-            h = self.batch_norm(self.relu(self.conv1(x)))
-            time_emb = self.relu(self.time_mlp(t))
-            time_emb = time_emb.view(time_emb.shape[0], -1, 1, 1)
-            h += time_emb
-            h = self.batch_norm(self.relu(self.conv2(h)))
-            return h + self.residual_conv(x)
+    def forward(self, x, t):
+        # Here, t already comes after SinusoidalEmbedding + a linear layer (and relu).
+        # This time_mlp is used to change shape of the vector (pretty sure)
+        h = self.batch_norm(self.relu(self.conv1(x)))
+        time_emb = self.relu(self.time_mlp(t))
+        time_emb = time_emb.view(time_emb.shape[0], -1, 1, 1)
+        h += time_emb
+        h = self.batch_norm(self.relu(self.conv2(h)))
+        return h + self.residual_conv(x)
 
 
 class UNet(nn.Module):
@@ -75,7 +75,7 @@ class UNet(nn.Module):
         
         # Encoder
         self.downs = nn.ModuleList()
-        self.pools = nn.ModuleList([nn.MaxPool2d() for _ in range(len(channel_multipliers))])
+        self.pools = nn.ModuleList([nn.MaxPool2d(2) for _ in range(len(channel_multipliers))])
 
         for i in range(len(channels) - 1):
             self.downs.append(ResidualBlock(channels[i], channels[i+1], time_emb_dim))
@@ -117,3 +117,8 @@ class UNet(nn.Module):
             x = block(x, t_emb)
         
         return self.output(x)
+    
+
+if __name__ == "__main__":
+    model = UNet(1, 1, 32, (1,2))
+    print(model)
