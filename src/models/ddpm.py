@@ -88,7 +88,7 @@ class DiffusionModel(nn.Module):
             alpha_t = self.alphas[t]
             alpha_cumprod_t = self.alphas_cumprod[t]
 
-            beta_t = self.beta[t]
+            beta_t = self.betas[t]
 
             coeff = (1 - alpha_t) / (1 - alpha_cumprod_t).sqrt()
             mean = (1 / alpha_t.sqrt()) * (x - coeff * predicted_noise)
