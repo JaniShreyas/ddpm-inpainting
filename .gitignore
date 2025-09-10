@@ -12,6 +12,9 @@ wheels/
 # Datasets
 datasets/
 
+# MLFlow
+mlruns/
+
 # dvc stuff
 checkpoints/
 output/
