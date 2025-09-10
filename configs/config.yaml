@@ -13,4 +13,4 @@ defaults:
 
 # Global settings
 device: 'cuda'
-experiment_name: 'ddpm_mnist_hydra'
+experiment_name: 'ddpm_mnist'

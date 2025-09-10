@@ -1,38 +1,62 @@
+import argparse
+import mlflow.artifacts
+import mlflow.pytorch
 import torch
+import mlflow
+import yaml
 from src.models.ddpm import DiffusionModel
 from torchvision.utils import save_image
 import os
 
 
-def main():
-    # Read config [FIX]
-    config = {
-        'device': 'cuda',
-        "model": {
-            "in_channels": 1,
-            "out_channels": 1,
-            "base_channels": 32,
-            "channel_multipliers": (1, 2),
-        }
-    }
+def main(run_id: str):
+    print(f"Loading model from MLFlow Run ID: {run_id}")
 
-    # Instantiate the model
-    model = DiffusionModel(model_config=config['model']).to(config['device'])
+    config_name = "config/config.yaml"
+    mlflow.artifacts.download_artifacts(
+        run_id=run_id, artifact_path=config_name, dst_path="."
+    )
+    model_uri = f"runs:/{run_id}/model"
 
-    # Load a trained checkpoint
-    checkpoint_path = "checkpoints/default_exp/model_epoch_final.pt"
-    model.load_state_dict(torch.load(checkpoint_path, map_location=config['device']))
+    with open("config.yaml", "r") as f:
+        config = yaml.safe_load(f)
+    os.remove("config.yaml")
+
+    device = config["device"]
+
+    model_loaded = mlflow.pytorch.load_model(model_uri, map_location=device)
+
+    model = DiffusionModel(model_config=config["model"]).to(device)
+    model.load_state_dict(model_loaded.state_dict())
     model.eval()
+    print(f"Model loaded successfully")
 
     # Call the sample method
-    generated_images = model.sample(num_images=8, image_size=32)
+    generated_images = model.sample(
+        num_images=config["sampling"]["num_images"],
+        image_size=config["dataset"]["image_size"],
+        device=device,
+    )
 
     # Save the images
     # Temporarily overwrites old saves / saves to same location. Need to change later [FIX]
-    output_path = "output/samples/generated_grid.png"
+    output_path = "output/samples_from_runs/"
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    save_image(generated_images, output_path, nrow=4)
-    print(f"Saved generated images to {output_path}")
+    save_path = f"{output_path}/{run_id}_grid.png"
+    save_image(generated_images, save_path, nrow=4)
+    print(f"Saved generated images to {save_path}")
+
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Sample from a trained DDPM using an MLflow Run ID."
+    )
+    parser.add_argument(
+        "--run_id",
+        type=str,
+        required=True,
+        help="The MLflow Run ID of the model to sample from.",
+    )
+    args = parser.parse_args()
+
+    main(args.run_id)

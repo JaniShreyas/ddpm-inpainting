@@ -26,8 +26,14 @@ def flatten_config(config):
 def main(config: DictConfig):
     mlflow.set_experiment(config.experiment_name)
 
-    with mlflow.start_run():
+    with mlflow.start_run() as run:
+        print(f"Started MLFlow Run ID: {run.info.run_id}")
+
         mlflow.log_params(flatten_config(OmegaConf.to_container(config, resolve=True, throw_on_missing=True)))
+
+        config_name = "config.yaml"
+        OmegaConf.save(config, config_name)
+        mlflow.log_artifact(config_name, "config")
 
         # Setup dataloaders
         data_config = DataConfig(**config.dataset)
