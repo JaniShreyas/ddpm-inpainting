@@ -15,6 +15,11 @@ datasets/
 # MLFlow
 mlruns/
 
-# dvc stuff
+# Hydra
+outputs/
+multirun/
+.hydra/
+
+# dvc only stuff (other folders will also be in dvc)
 checkpoints/
 output/
