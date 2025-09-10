@@ -1,0 +1,16 @@
+hydra:
+  run: 
+    # Set the output directory to be the same as script's directory
+    dir: .
+  output_subdir: .hydra
+
+defaults:
+  - dataset: mnist
+  - model: ddpm_mnist
+  - training: default
+  - sampling: default
+  - _self_
+
+# Global settings
+device: 'cuda'
+experiment_name: 'ddpm_mnist_hydra'
