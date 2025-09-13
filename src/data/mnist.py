@@ -2,7 +2,11 @@ from torchvision import datasets, transforms
 from .config import DataConfig
 from .utils import make_dataloaders
 
-MNIST_MEAN, MNIST_STD = (0.1307,), (0.3081,)
+
+def get_stats():
+    return (0.1307,), (0.3081,)
+
+MNIST_MEAN, MNIST_STD = get_stats()
 
 
 def default_transform(cfg: DataConfig | None = None):

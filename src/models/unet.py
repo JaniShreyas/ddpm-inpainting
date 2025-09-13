@@ -31,8 +31,11 @@ class ResidualBlock(nn.Module):
             kernel_size=3,
             padding=1,
         )
-        self.relu = nn.ReLU()
-        self.batch_norm = nn.BatchNorm2d(out_channels)
+        # self.relu = nn.ReLU()
+        # self.batch_norm = nn.BatchNorm2d(out_channels)
+        self.norm1 = nn.GroupNorm(8, out_channels)
+        self.norm2 = nn.GroupNorm(8, out_channels)
+        self.act = nn.SiLU()
         self.residual_conv = (
             nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=1)
             if in_channels != out_channels
@@ -42,11 +45,11 @@ class ResidualBlock(nn.Module):
     def forward(self, x, t):
         # Here, t already comes after SinusoidalEmbedding + a linear layer (and relu).
         # This time_mlp is used to change shape of the vector (pretty sure)
-        h = self.batch_norm(self.relu(self.conv1(x)))
-        time_emb = self.relu(self.time_mlp(t))
+        h = self.act(self.norm1(self.conv1(x)))
+        time_emb = self.act(self.time_mlp(t))
         time_emb = time_emb.view(time_emb.shape[0], -1, 1, 1)
         h += time_emb
-        h = self.batch_norm(self.relu(self.conv2(h)))
+        h = self.act(self.norm2(self.conv2(h)))
         return h + self.residual_conv(x)
 
 
@@ -104,6 +107,11 @@ class UNet(nn.Module):
 
         # Output
         self.output = nn.Conv2d(base_channels, self.out_channels, kernel_size=1)
+        
+        # Zero-init final conv so initial predictions are near 0
+        nn.init.zeros_(self.output.weight)
+        if self.output.bias is not None:
+            nn.init.zeros_(self.output.bias)
 
     def forward(self, x, t):
         t_emb = self.time_mlp(t)

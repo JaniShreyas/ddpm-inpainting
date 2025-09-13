@@ -5,7 +5,7 @@ import os
 from torchvision.utils import save_image
 
 class Trainer:
-    def __init__(self, model, dataloader, optimizer, config):
+    def __init__(self, model, dataloader, optimizer, get_stats, config):
 
         self.config = config
         self.device = config["device"]
@@ -16,6 +16,7 @@ class Trainer:
         self.model = model.to(self.device)
         self.dataloader = dataloader
         self.optimizer = optimizer
+        self.get_stats = get_stats
 
     def _train_epoch(self, epoch_num):
         self.model.train()
@@ -73,6 +74,7 @@ class Trainer:
             generated_images = self.model.sample(
                 num_images=self.config["sampling"]["num_images"],
                 image_size=self.config["dataset"]["image_size"],
+                get_stats=self.get_stats,
                 device=self.device
             )
         

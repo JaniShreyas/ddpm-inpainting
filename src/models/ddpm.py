@@ -66,7 +66,7 @@ class DiffusionModel(nn.Module):
         return loss
 
     @torch.no_grad()
-    def sample(self, num_images, image_size, device="cuda"):
+    def sample(self, num_images, image_size, get_stats, device="cuda"):
         """
         Inference method for generating new images
         """
@@ -88,8 +88,6 @@ class DiffusionModel(nn.Module):
             alpha_t = self.alphas[t]
             alpha_cumprod_t = self.alphas_cumprod[t]
 
-            beta_t = self.betas[t]
-
             coeff = (1 - alpha_t) / (1 - alpha_cumprod_t).sqrt()
             mean = (1 / alpha_t.sqrt()) * (x - coeff * predicted_noise)
 
@@ -100,6 +98,10 @@ class DiffusionModel(nn.Module):
             else:
                 x = mean
 
-        # Denormalize images from [-1, 1] to [0, 1] for viewing and saving
-        x = (x.clamp(-1, 1) + 1) / 2
+        # Denormalize images for viewing and saving
+        mean, std = get_stats()
+        mean = torch.tensor(mean, device=x.device, dtype=x.dtype).view(1,-1,1,1)
+        std = torch.tensor(std, device=x.device, dtype=x.dtype).view(1,-1,1,1)
+        x = x * std + mean
+        x = x.clamp(0,1)
         return x
