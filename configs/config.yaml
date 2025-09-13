@@ -14,3 +14,4 @@ defaults:
 # Global settings
 device: 'cuda'
 experiment_name: 'ddpm_mnist'
+seed: 42

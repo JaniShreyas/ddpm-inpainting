@@ -4,6 +4,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 
 # Replace with factory get_dataloaders to fit with config yaml
+from src.utils.set_seed import set_seed
 from src.data.mnist import get_dataloaders
 
 from src.models.ddpm import DiffusionModel
@@ -24,6 +25,8 @@ def flatten_config(config):
 
 @hydra.main(config_path="../configs", config_name="config", version_base=None)
 def main(config: DictConfig):
+    set_seed(config.seed)
+
     mlflow.set_experiment(config.experiment_name)
 
     with mlflow.start_run() as run:
