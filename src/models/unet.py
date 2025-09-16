@@ -61,6 +61,7 @@ class UNet(nn.Module):
         base_channels: int,
         channel_multipliers: tuple,
         time_emb_dim: int = 64,
+        **kwargs,
     ):
         super().__init__()
 
