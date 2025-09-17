@@ -1,12 +1,21 @@
 import torch
 import mlflow
+import torch.utils.data.dataloader
 from tqdm import tqdm
 import os
 from torchvision.utils import save_image
+from copy import deepcopy
+
 
 class Trainer:
-    def __init__(self, model, dataloader, optimizer, get_stats, config):
-
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        dataloader: torch.utils.data.DataLoader,
+        optimizer: torch.optim.Optimizer,
+        get_stats,
+        config,
+    ):
         self.config = config
         self.device = config["device"]
         self.epochs = config["training"]["epochs"]
@@ -18,6 +27,15 @@ class Trainer:
         self.optimizer = optimizer
         self.get_stats = get_stats
 
+        self.ema_decay = self.config["training"].get("ema_decay")
+        self.ema_model = deepcopy(self.model).eval().requires_grad_(False)
+        print(f"EMA enabled with decay rate: {self.ema_decay}")
+
+    def _update_ema_weights(self):
+        with torch.no_grad():
+            for ema_param, model_param in zip(self.ema_model.parameters(), self.model.parameters()):
+                ema_param.data.mul_(self.ema_decay).add_(model_param, alpha=(1-self.ema_decay))
+
     def _train_epoch(self, epoch_num):
         self.model.train()
         total_loss = 0.0
@@ -27,8 +45,12 @@ class Trainer:
 
         for batch in progress_bar:
             # The data might have (image, label) or just (image,) so deal with both
-            clean_images = batch[0].to(self.device) if isinstance(batch, (list, tuple)) else batch.to(self.device)
-            
+            clean_images = (
+                batch[0].to(self.device)
+                if isinstance(batch, (list, tuple))
+                else batch.to(self.device)
+            )
+
             # Optimizer zero grad
             self.optimizer.zero_grad()
 
@@ -41,43 +63,52 @@ class Trainer:
             # Optimizer step
             self.optimizer.step()
 
+            # Update ema weights after every step
+            self._update_ema_weights()
+
             total_loss += loss.item()
-            progress_bar.set_postfix(loss = loss.item())
-        
+            progress_bar.set_postfix(loss=loss.item())
+
         avg_loss = total_loss / len(self.dataloader)
         print(f"Epoch {epoch_num} - Average loss: {avg_loss:.4f}")
-        
+
         # Log metrics for MLFlow
         mlflow.log_metric("avg_loss", avg_loss, step=epoch_num)
 
-
     def _save_and_log_checkpoint(self, epoch_num, is_final=False):
+
+        checkpoint = {
+            "epoch": epoch_num,
+            "model_state_dict": self.model.state_dict(),
+            "ema_model_state_dict": self.ema_model.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+        }
+
         temp_checkpoint_path = f"temp_checkpoint_epoch_{epoch_num}.pt"
-        torch.save(self.model.state_dict(), temp_checkpoint_path)
+        torch.save(checkpoint, temp_checkpoint_path)
 
         # Log as artifact
         mlflow.log_artifact(temp_checkpoint_path, artifact_path="checkpoints")
 
-        # If it is final, save as mlflow model as well
+        # If it is final, save the ema model as mlflow model as well
         if is_final:
-            mlflow.pytorch.log_model(self.model, name="model")
-            print("Final model saved in MLFlow model format")
+            mlflow.pytorch.log_model(self.ema_model, name="model")
+            print("Final EMA model saved in MLFlow model format")
 
         # Clean up temporary file
         os.remove(temp_checkpoint_path)
         print(f"Logged checkpoints for epoch {epoch_num} to MLFlow")
 
-
     def sample_and_log_images(self, epoch_num):
         self.model.eval()
         with torch.no_grad():
-            generated_images = self.model.sample(
+            generated_images = self.ema_model.sample(
                 num_images=self.config["sampling"]["num_images"],
                 image_size=self.config["dataset"]["image_size"],
                 get_stats=self.get_stats,
-                device=self.device
+                device=self.device,
             )
-        
+
         # Save temporary file
         temp_path = f"temp_sample_epoch_{epoch_num}.png"
         save_image(generated_images, temp_path, nrow=4)
@@ -88,18 +119,17 @@ class Trainer:
         # Clean up temporary file
         os.remove(temp_path)
         print(f"Logged sample images for epoch {epoch_num} to MLFlow")
-    
 
     def train(self):
         print("Starting training...")
         for epoch in range(1, self.epochs + 1):
             self._train_epoch(epoch)
-            
+
             # Save a checkpoint every 10 epochs (can use validation loss as a metric later)
             if epoch % self.sample_every_n_epochs == 0:
                 self._save_and_log_checkpoint(epoch)
                 self.sample_and_log_images(epoch)
-        
+
         # Always save the final model
         self._save_and_log_checkpoint("final", is_final=True)
         self.sample_and_log_images("final")
