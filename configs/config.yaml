@@ -15,3 +15,4 @@ defaults:
 device: 'cuda'
 experiment_name: 'ddpm_mnist_groupnorm_silu_adamw'
 seed: 42
+resume_from_run_id: null

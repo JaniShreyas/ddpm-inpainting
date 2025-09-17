@@ -15,21 +15,32 @@ class Trainer:
         optimizer: torch.optim.Optimizer,
         get_stats,
         config,
+        start_epoch=1,
+        ema_state_dict=None,
     ):
+        # Config and device setup
         self.config = config
         self.device = config["device"]
         self.epochs = config["training"]["epochs"]
         self.experiment_name = config["experiment_name"]
         self.sample_every_n_epochs = config["sampling"]["sample_every_n_epochs"]
 
+        # Core Components
         self.model = model.to(self.device)
         self.dataloader = dataloader
         self.optimizer = optimizer
         self.get_stats = get_stats
+        self.start_epoch = start_epoch
 
+        # Setup EMA decay
         self.ema_decay = self.config["training"].get("ema_decay")
         self.ema_model = deepcopy(self.model).eval().requires_grad_(False)
         print(f"EMA enabled with decay rate: {self.ema_decay}")
+
+        # Reload EMA decay
+        if ema_state_dict:
+            self.ema_model.load_state_dict(ema_state_dict)
+            print("Resumed EMA model state from checkpoint")
 
     def _update_ema_weights(self):
         with torch.no_grad():
@@ -76,7 +87,7 @@ class Trainer:
         mlflow.log_metric("avg_loss", avg_loss, step=epoch_num)
 
     def _save_and_log_checkpoint(self, epoch_num, is_final=False):
-
+        base_checkpoint_artifact_dir = "checkpoints"
         checkpoint = {
             "epoch": epoch_num,
             "model_state_dict": self.model.state_dict(),
@@ -84,11 +95,16 @@ class Trainer:
             "optimizer_state_dict": self.optimizer.state_dict(),
         }
 
-        temp_checkpoint_path = f"temp_checkpoint_epoch_{epoch_num}.pt"
+        temp_checkpoint_path = f"checkpoint_epoch_{epoch_num}.pt"
         torch.save(checkpoint, temp_checkpoint_path)
 
         # Log as artifact
-        mlflow.log_artifact(temp_checkpoint_path, artifact_path="checkpoints")
+        mlflow.log_artifact(temp_checkpoint_path, artifact_path=base_checkpoint_artifact_dir)
+
+        # final_checkpoint variable for easy access
+        latest_checkpoint_path = "latest_checkpoint.pt"
+        torch.save(checkpoint, latest_checkpoint_path)
+        mlflow.log_artifact(latest_checkpoint_path, artifact_path=base_checkpoint_artifact_dir)
 
         # If it is final, save the ema model as mlflow model as well
         if is_final:
@@ -97,6 +113,7 @@ class Trainer:
 
         # Clean up temporary file
         os.remove(temp_checkpoint_path)
+        os.remove(latest_checkpoint_path)
         print(f"Logged checkpoints for epoch {epoch_num} to MLFlow")
 
     def sample_and_log_images(self, epoch_num):
@@ -121,8 +138,8 @@ class Trainer:
         print(f"Logged sample images for epoch {epoch_num} to MLFlow")
 
     def train(self):
-        print("Starting training...")
-        for epoch in range(1, self.epochs + 1):
+        print(f"Starting training from epoch {self.start_epoch}...")
+        for epoch in range(self.start_epoch, self.epochs + 1):
             self._train_epoch(epoch)
 
             # Save a checkpoint every 10 epochs (can use validation loss as a metric later)
@@ -131,6 +148,6 @@ class Trainer:
                 self.sample_and_log_images(epoch)
 
         # Always save the final model
-        self._save_and_log_checkpoint("final", is_final=True)
+        self._save_and_log_checkpoint(self.epochs, is_final=True)
         self.sample_and_log_images("final")
         print("Training complete.")
