@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.data.config import DataConfig
+
 from .unet import UNet
 
 from tqdm import tqdm
@@ -100,7 +102,7 @@ class DiffusionModel(nn.Module):
                 x = mean
 
         # Denormalize images for viewing and saving
-        mean, std = get_stats(self.config.dataset)
+        mean, std = get_stats(DataConfig(**self.config.dataset))
         mean = torch.tensor(mean, device=x.device, dtype=x.dtype).view(1,-1,1,1)
         std = torch.tensor(std, device=x.device, dtype=x.dtype).view(1,-1,1,1)
         x = x * std + mean
