@@ -9,8 +9,7 @@ import yaml
 # Replace with factory get_dataloaders to fit with config yaml
 from src.utils.set_seed import set_seed
 
-# from src.data.mnist import get_dataloaders, get_stats
-from src.data.cifar10 import get_dataloaders, get_stats
+from src.data import get_dataloaders, get_stats
 
 from src.models.ddpm import DiffusionModel
 from src.training.trainer import Trainer
@@ -82,7 +81,7 @@ def main(config: DictConfig):
     train_dataloader, test_dataloader = get_dataloaders(data_config)
 
     # Setup model
-    model = DiffusionModel(model_config=config.model).to(config.device)
+    model = DiffusionModel(config=config).to(config.device)
 
     # Setup optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.training.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=1e-6)

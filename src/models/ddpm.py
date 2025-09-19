@@ -8,12 +8,13 @@ from tqdm import tqdm
 
 
 class DiffusionModel(nn.Module):
-    def __init__(self, model_config):
+    def __init__(self, config):
         super().__init__()
-        self.unet = UNet(**model_config)
+        self.config = config
+        self.unet = UNet(**self.config.model)
 
         # Noise Schedule
-        T = model_config.T
+        T = self.config.model.T
         beta_start = 1e-4
         beta_end = 0.02
         betas = torch.linspace(beta_start, beta_end, T)
@@ -99,7 +100,7 @@ class DiffusionModel(nn.Module):
                 x = mean
 
         # Denormalize images for viewing and saving
-        mean, std = get_stats()
+        mean, std = get_stats(self.config.dataset)
         mean = torch.tensor(mean, device=x.device, dtype=x.dtype).view(1,-1,1,1)
         std = torch.tensor(std, device=x.device, dtype=x.dtype).view(1,-1,1,1)
         x = x * std + mean

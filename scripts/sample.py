@@ -26,7 +26,7 @@ def main(run_id: str):
 
     model_loaded = mlflow.pytorch.load_model(model_uri, map_location=device)
 
-    model = DiffusionModel(model_config=config["model"]).to(device)
+    model = DiffusionModel(config=config).to(device)
     model.load_state_dict(model_loaded.state_dict())
     model.eval()
     print(f"Model loaded successfully")
