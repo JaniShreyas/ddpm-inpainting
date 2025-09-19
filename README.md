@@ -13,9 +13,9 @@ The framework is designed to be highly modular and extensible, allowing for easy
 - **Advanced Training Techniques:** The pipeline includes best practices like Exponential Moving Average (EMA) weights for improved sample quality.
 
 ### MLOps & Engineering Framework
-- Composable Configuration with Hydra: All experimental parameters are managed in a modular `configs/` directory. This enables rapid, code-free experimentation through simple command-line overrides.
-- Comprehensive Experiment Tracking with MLflow: Every run is automatically logged. MLflow tracks all hyperparameters, monitors live metrics (loss curves), and versions all output artifacts (models, checkpoints, and sample images).
-- Guaranteed Reproducibility: The framework uses global seeding and logs the exact configuration for every run, ensuring that any experiment can be perfectly reproduced using its MLflow Run ID.
+- **Composable Configuration with Hydra**: All experimental parameters are managed in a modular `configs/` directory. This enables rapid, code-free experimentation through simple command-line overrides.
+- **Comprehensive Experiment Tracking with MLflow**: Every run is automatically logged. MLflow tracks all hyperparameters, monitors live metrics (loss curves), and versions all output artifacts (models, checkpoints, and sample images).
+- **Guaranteed Reproducibility**: The framework uses global seeding and logs the exact configuration for every run, ensuring that any experiment can be perfectly reproduced using its MLflow Run ID.
 
 ## Setup instructions
 
@@ -66,5 +66,6 @@ To generate images from a specific experiment, use the `sample.py` script and pr
 ```
 uv run -m scripts.sample --run_id <your_mlflow_run_id>
 ```
+
 
 
