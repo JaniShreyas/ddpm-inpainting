@@ -10,11 +10,11 @@ The framework is designed to be highly modular and extensible, allowing for easy
 - **From-Scratch DDPM Implementation:** The entire diffusion process, including the noise schedule and sampling loop, is built from first principles in PyTorch.
 - **Configurable U-Net Architecture:** A flexible U-Net model serves as the denoising backbone. Its depth (channel_multipliers) and width (base_channels) can be configured directly from a YAML file without changing any code.
 - **Time-Conditioned Residual Blocks:** The U-Net uses ResidualBlocks for stable training and SinusoidalPositionEmbeddings to effectively condition the model on the current timestep.
-- **Advanced Training Techniques:** The pipeline includes best practices like Exponential Moving Average (EMA) weights for improved sample quality and configurable learning rate schedulers.
+- **Advanced Training Techniques:** The pipeline includes best practices like Exponential Moving Average (EMA) weights for improved sample quality.
 
 ### MLOps & Engineering Framework
 - Composable Configuration with Hydra: All experimental parameters are managed in a modular `configs/` directory. This enables rapid, code-free experimentation through simple command-line overrides.
-- Comprehensive Experiment Tracking with MLflow: Every run is automatically logged. MLflow tracks all hyperparameters, monitors live metrics (loss curves, learning rate), and versions all output artifacts (models, checkpoints, and sample images).
+- Comprehensive Experiment Tracking with MLflow: Every run is automatically logged. MLflow tracks all hyperparameters, monitors live metrics (loss curves), and versions all output artifacts (models, checkpoints, and sample images).
 - Guaranteed Reproducibility: The framework uses global seeding and logs the exact configuration for every run, ensuring that any experiment can be perfectly reproduced using its MLflow Run ID.
 
 ## Setup instructions
@@ -66,4 +66,5 @@ To generate images from a specific experiment, use the `sample.py` script and pr
 ```
 uv run -m scripts.sample --run_id <your_mlflow_run_id>
 ```
+
 
