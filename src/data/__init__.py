@@ -22,4 +22,4 @@ def get_dataloaders(cfg: DataConfig) -> DataLoader:
     return dataloader_fn(cfg)
 
 def get_stats(cfg: DataConfig) -> tuple:
-    return DATASET_REGISTRY[cfg.name][1]
+    return DATASET_REGISTRY[cfg.name][1]()
