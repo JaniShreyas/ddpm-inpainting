@@ -8,7 +8,9 @@ import yaml
 
 # Replace with factory get_dataloaders to fit with config yaml
 from src.utils.set_seed import set_seed
-from src.data.mnist import get_dataloaders, get_stats
+
+# from src.data.mnist import get_dataloaders, get_stats
+from src.data.cifar10 import get_dataloaders, get_stats
 
 from src.models.ddpm import DiffusionModel
 from src.training.trainer import Trainer

@@ -5,14 +5,14 @@ hydra:
   output_subdir: .hydra
 
 defaults:
-  - dataset: mnist
-  - model: ddpm_mnist
+  - dataset: cifar10
+  - model: ddpm_cifar10
   - training: default
   - sampling: default
   - _self_
 
 # Global settings
 device: 'cuda'
-experiment_name: 'ddpm_mnist_groupnorm_silu_adamw'
+experiment_name: 'ddpm_cifar10'
 seed: 42
 resume_from_run_id: null

@@ -1,0 +1,6 @@
+in_channels: 3
+out_channels: 3
+base_channels: 32
+channel_multipliers: [1,2,4]
+time_emb_dim: 128
+T: 1000
