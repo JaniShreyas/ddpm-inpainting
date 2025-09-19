@@ -4,6 +4,8 @@ This project is a from-scratch implementation of a Denoising Diffusion Probabili
 
 The framework is designed to be highly modular and extensible, allowing for easy adaptation to different models (e.g., text-to-image, inpainting) and datasets. It leverages a modern MLOps toolchain, including Hydra for composable configuration management and MLflow for comprehensive experiment tracking, to ensure every result is auditable and reproducible.
 
+The project, as of now, supports MNIST digits and CIFAR10 as datasets and a traditional DDPM with a UNet backbone as options. There will be more models and backbones (UNet with attention, DDIM, text-to-image models) and datasets (CelebA) added in the future.
+
 ## Key Features
 
 ### Machine Learning Core
@@ -66,6 +68,7 @@ To generate images from a specific experiment, use the `sample.py` script and pr
 ```
 uv run -m scripts.sample --run_id <your_mlflow_run_id>
 ```
+
 
 
 
