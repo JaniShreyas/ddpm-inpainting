@@ -51,3 +51,29 @@ class ResidualBlock(nn.Module):
         h += time_emb
         h = self.act(self.norm2(self.conv2(h)))
         return h + self.residual_conv(x)
+
+class AttentionBlock(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.norm = nn.GroupNorm(num_groups=8, num_channels=channels)
+        self.qkv = nn.Conv2d(channels, channels*3, kernel_size=1)
+        self.proj_out = nn.Conv2d(channels, channels, kernel_size=1)
+
+    def forward(self, x):
+        B,C,H,W = x.shape
+        
+        h = self.norm(x)
+        q,k,v = self.qkv(h).chunk(3, dim=1)
+
+        q = q.reshape(B,C,H*W)
+        k = k.reshape(B,C,H*W)
+        v = v.reshape(B,C,H*W)
+
+        attn = torch.einsum("b c i, b c j -> b i j", q, k) * (C ** -0.5)
+        attn = attn.softmax(dim=-1)
+
+        out = torch.einsum("b i j, b c j -> b i j", attn, v)
+        out = out.reshape(B,C,H,W)
+
+        return x + self.proj_out(out)
+    
