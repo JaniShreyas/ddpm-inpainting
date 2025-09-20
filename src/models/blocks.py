@@ -72,7 +72,7 @@ class AttentionBlock(nn.Module):
         attn = torch.einsum("b c i, b c j -> b i j", q, k) * (C ** -0.5)
         attn = attn.softmax(dim=-1)
 
-        out = torch.einsum("b i j, b c j -> b i j", attn, v)
+        out = torch.einsum("b i j, b c j -> b c i", attn, v)
         out = out.reshape(B,C,H,W)
 
         return x + self.proj_out(out)

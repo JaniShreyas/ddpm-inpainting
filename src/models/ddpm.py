@@ -10,15 +10,15 @@ from tqdm import tqdm
 
 
 class DiffusionModel(nn.Module):
-    def __init__(self, config):
+    def __init__(self, backbone, config):
         super().__init__()
         self.config = config
-        self.unet = UNet(**self.config.model)
+        self.backbone = backbone
 
         # Noise Schedule
-        T = self.config.model.T
-        beta_start = 1e-4
-        beta_end = 0.02
+        T = self.config.model.schedule.T
+        beta_start = self.config.model.schedule.beta_start
+        beta_end = self.config.model.schedule.beta_end
         betas = torch.linspace(beta_start, beta_end, T)
 
         alphas = 1.0 - betas
@@ -62,7 +62,7 @@ class DiffusionModel(nn.Module):
         x_noisy, noise = self.q_sample(x_start=x, t=t)
 
         # Predict noise
-        predicted_noise = self.unet(x_noisy, t)
+        predicted_noise = self.backbone(x_noisy, t)
 
         # Calculate loss
         loss = F.mse_loss(noise, predicted_noise)
@@ -75,7 +75,7 @@ class DiffusionModel(nn.Module):
         """
         # Start with pure random noise
         x = torch.randn(
-            num_images, self.unet.in_channels, image_size, image_size, device=device
+            num_images, self.backbone.in_channels, image_size, image_size, device=device
         )
 
         # The reverse diffusion loop. Calculate and remove noise
@@ -85,7 +85,7 @@ class DiffusionModel(nn.Module):
             t_tensor = torch.full((num_images,), t, device=device, dtype=torch.long)
 
             # Predict the noise from the UNet
-            predicted_noise = self.unet(x, t_tensor)
+            predicted_noise = self.backbone(x, t_tensor)
 
             # The denoising formula to get a cleaner image. From the paper
             alpha_t = self.alphas[t]

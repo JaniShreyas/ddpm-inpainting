@@ -6,13 +6,13 @@ hydra:
 
 defaults:
   - dataset: cifar10
-  - model: ddpm_cifar10
+  - model: ddpm_cifar10_attention
   - training: default
   - sampling: default
   - _self_
 
 # Global settings
 device: 'cuda'
-experiment_name: 'ddpm_cifar10'
+experiment_name: 'ddpm_cifar10_attention'
 seed: 42
 resume_from_run_id: null

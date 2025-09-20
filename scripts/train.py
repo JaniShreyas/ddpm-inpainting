@@ -11,7 +11,7 @@ from src.utils.set_seed import set_seed
 
 from src.data import get_dataloaders, get_stats
 
-from src.models.ddpm import DiffusionModel
+from src.models import get_model
 from src.training.trainer import Trainer
 from src.data.config import DataConfig
 
@@ -81,7 +81,7 @@ def main(config: DictConfig):
     train_dataloader, test_dataloader = get_dataloaders(data_config)
 
     # Setup model
-    model = DiffusionModel(config=config).to(config.device)
+    model = get_model(config=config).to(config.device)
 
     # Setup optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.training.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=1e-6)
