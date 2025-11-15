@@ -37,7 +37,7 @@ class UNetWithAttention(nn.Module):
         
         # Encoder
         self.downs = nn.ModuleList()
-        self.pools = nn.ModuleList([nn.MaxPool2d(2) for _ in range(len(channel_multipliers))])
+        self.downsamplers = nn.ModuleList()
 
         forward_channels = [base_channels] + channels
         current_res = self.image_size
@@ -52,6 +52,8 @@ class UNetWithAttention(nn.Module):
             # Check and add attention blocks
             if current_res in attention_resolutions:
                 self.downs.append(AttentionBlock(out_ch))
+
+            self.downsamplers.append(nn.Conv2d(out_ch, out_ch, kernel_size=4, stride=2, padding=1))
             
             current_res //= 2  # Since we always half the resolution in the pools
             
@@ -70,14 +72,20 @@ class UNetWithAttention(nn.Module):
 
         # Decoder
         self.ups = nn.ModuleList()
-        self.up_trans = nn.ModuleList()
+        # self.up_trans = nn.ModuleList()
+        self.upsamplers = nn.ModuleList()
 
         reversed_channels = [bottleneck_out] + list(reversed(channels))
         for i in range(len(reversed_channels) - 1):
             in_ch = reversed_channels[i]
             out_ch = reversed_channels[i+1]
 
-            self.up_trans.append(nn.ConvTranspose2d(in_ch, out_ch, kernel_size=2, stride=2))
+            self.upsamplers.append(
+                nn.Sequential(
+                    nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+                    nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1)
+                )
+            )
 
             # The input to the residual block will be doubled (after the skip connection is concatenated to the up_trans output)
             self.ups.append(ResidualBlock(in_ch, out_ch, time_emb_dim))
@@ -104,7 +112,7 @@ class UNetWithAttention(nn.Module):
 
         # Encoder with attention
         down_idx = 0
-        for i in range(len(self.pools)):
+        for i in range(len(self.downsamplers)):
             # Residual block for this level
             x = self.downs[down_idx](x, t_emb)
             down_idx += 1
@@ -118,7 +126,7 @@ class UNetWithAttention(nn.Module):
             skip_connections.append(x)
 
             # Down sampling
-            x = self.pools[i](x)
+            x = self.downsamplers[i](x)
 
         # Bottleneck is effectively static
         x = self.bottleneck[0](x, t_emb)
@@ -127,12 +135,12 @@ class UNetWithAttention(nn.Module):
 
         # Decoder with attention
         up_idx = 0
-        for i in range(len(self.up_trans)):
+        for i in range(len(self.upsamplers)):
             # Get the skip connection
             skip = skip_connections.pop()
 
             # Upsampling
-            x = self.up_trans[i](x)
+            x = self.upsamplers[i](x)
 
             # Add skip connection (concatenate)
             x = torch.cat([x, skip], dim=1)
