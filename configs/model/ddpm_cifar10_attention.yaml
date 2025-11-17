@@ -7,6 +7,7 @@ backbone:
   channel_multipliers: [1,2,4]
   attention_resolutions: [16]
   time_emb_dim: 128
+  num_res_blocks: 2
 
 schedule:
   T: 1000

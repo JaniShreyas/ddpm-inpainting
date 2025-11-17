@@ -14,6 +14,7 @@ class UNetWithAttention(nn.Module):
         attention_resolutions: tuple,
         time_emb_dim: int = 64,
         image_size: int = 32,  # for calculating resolutions for attention block placement
+        num_res_blocks: int = 2,
         **kwargs,
     ):
         super().__init__()
@@ -47,7 +48,7 @@ class UNetWithAttention(nn.Module):
             out_ch = forward_channels[i+1]
 
             # Add residual blocks
-            self.downs.append(ResidualBlock(in_ch, out_ch, time_emb_dim))
+            self.downs.append(nn.Sequential(*[ResidualBlock(in_ch, out_ch, time_emb_dim) for _ in range(num_res_blocks)]))
 
             # Check and add attention blocks
             if current_res in attention_resolutions:
@@ -88,7 +89,7 @@ class UNetWithAttention(nn.Module):
             )
 
             # The input to the residual block will be doubled (after the skip connection is concatenated to the up_trans output)
-            self.ups.append(ResidualBlock(in_ch, out_ch, time_emb_dim))
+            self.ups.append(nn.Sequential(*[ResidualBlock(in_ch, out_ch, time_emb_dim) for _ in range(num_res_blocks)]))
 
             # Check and add attention block
             current_res *= 2
