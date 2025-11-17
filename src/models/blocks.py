@@ -19,7 +19,7 @@ class SinusoidalPositionEmbeddings(nn.Module):
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, time_emb_dim):
+    def __init__(self, in_channels, out_channels, time_emb_dim, dropout: float = 0.1):
         super().__init__()
         self.time_mlp = nn.Linear(time_emb_dim, out_channels)
         self.conv1 = nn.Conv2d(
@@ -41,6 +41,7 @@ class ResidualBlock(nn.Module):
             if in_channels != out_channels
             else nn.Identity()
         )
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, t):
         # Here, t already comes after SinusoidalEmbedding + a linear layer (and relu).
@@ -50,6 +51,7 @@ class ResidualBlock(nn.Module):
         time_emb = time_emb.view(time_emb.shape[0], -1, 1, 1)
         h += time_emb
         h = self.act(self.norm2(self.conv2(h)))
+        h = self.dropout(h)
         return h + self.residual_conv(x)
 
 class AttentionBlock(nn.Module):

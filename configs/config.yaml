@@ -13,6 +13,6 @@ defaults:
 
 # Global settings
 device: 'cuda'
-experiment_name: 'ddpm_cifar10_attention_updated_down_up'
+experiment_name: 'ddpm_cifar10_attention_dropout'
 seed: 42
 resume_from_run_id: null

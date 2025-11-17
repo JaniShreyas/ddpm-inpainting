@@ -8,6 +8,7 @@ backbone:
   attention_resolutions: [16]
   time_emb_dim: 128
   num_res_blocks: 2
+  dropout: 0.1
 
 schedule:
   T: 1000

@@ -13,6 +13,7 @@ class UNetWithAttention(nn.Module):
         channel_multipliers: tuple,
         attention_resolutions: tuple,
         time_emb_dim: int = 64,
+        dropout: float = 0.1,
         image_size: int = 32,  # for calculating resolutions for attention block placement
         num_res_blocks: int = 2,
         **kwargs,
@@ -22,6 +23,8 @@ class UNetWithAttention(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.image_size = image_size
+
+        self.num_res_blocks = num_res_blocks
 
         self.time_mlp = nn.Sequential(
             SinusoidalPositionEmbeddings(time_emb_dim),
@@ -48,7 +51,9 @@ class UNetWithAttention(nn.Module):
             out_ch = forward_channels[i+1]
 
             # Add residual blocks
-            self.downs.append(nn.Sequential(*[ResidualBlock(in_ch, out_ch, time_emb_dim) for _ in range(num_res_blocks)]))
+            for _ in range(num_res_blocks):
+                self.downs.append(ResidualBlock(in_ch, out_ch, time_emb_dim, dropout=dropout))
+                in_ch=out_ch
 
             # Check and add attention blocks
             if current_res in attention_resolutions:
@@ -88,8 +93,12 @@ class UNetWithAttention(nn.Module):
                 )
             )
 
+            in_ch = out_ch * 2
+
             # The input to the residual block will be doubled (after the skip connection is concatenated to the up_trans output)
-            self.ups.append(nn.Sequential(*[ResidualBlock(in_ch, out_ch, time_emb_dim) for _ in range(num_res_blocks)]))
+            for _ in range(num_res_blocks):
+                self.ups.append(ResidualBlock(in_ch, out_ch, time_emb_dim, dropout=dropout))
+                in_ch=out_ch
 
             # Check and add attention block
             current_res *= 2
@@ -114,9 +123,10 @@ class UNetWithAttention(nn.Module):
         # Encoder with attention
         down_idx = 0
         for i in range(len(self.downsamplers)):
-            # Residual block for this level
-            x = self.downs[down_idx](x, t_emb)
-            down_idx += 1
+            # Residual blocks for this level
+            for _ in range(self.num_res_blocks):
+                x = self.downs[down_idx](x, t_emb)
+                down_idx += 1
 
             # Check if there's an Attention Block at this level
             if down_idx < len(self.downs) and isinstance(self.downs[down_idx], AttentionBlock):
@@ -147,8 +157,9 @@ class UNetWithAttention(nn.Module):
             x = torch.cat([x, skip], dim=1)
 
             # Residual block
-            x = self.ups[up_idx](x, t_emb)
-            up_idx += 1
+            for _ in range(self.num_res_blocks):
+                x = self.ups[up_idx](x, t_emb)
+                up_idx += 1
 
             # Check and use attention block
             if up_idx < len(self.ups) and isinstance(self.ups[up_idx], AttentionBlock):
