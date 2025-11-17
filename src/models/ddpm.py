@@ -3,8 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from src.data.config import DataConfig
-
-from .unet import UNet
+from src.noise_schedules import get_noise_schedule
 
 from tqdm import tqdm
 
@@ -16,10 +15,7 @@ class DiffusionModel(nn.Module):
         self.backbone = backbone
 
         # Noise Schedule
-        T = self.config.model.schedule.T
-        beta_start = self.config.model.schedule.beta_start
-        beta_end = self.config.model.schedule.beta_end
-        betas = torch.linspace(beta_start, beta_end, T)
+        betas = get_noise_schedule(config.model.schedule)
 
         alphas = 1.0 - betas
         alphas_cumprod = torch.cumprod(alphas, dim=0)

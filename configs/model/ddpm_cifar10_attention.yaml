@@ -10,7 +10,5 @@ backbone:
   num_res_blocks: 2
   dropout: 0.1
 
-schedule:
-  T: 1000
-  beta_start: 0.0001
-  beta_end: 0.02
+defaults:
+  - schedule: linear
