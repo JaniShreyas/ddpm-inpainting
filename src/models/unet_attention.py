@@ -93,8 +93,6 @@ class UNetWithAttention(nn.Module):
                 )
             )
 
-            in_ch = out_ch * 2
-
             # The input to the residual block will be doubled (after the skip connection is concatenated to the up_trans output)
             for _ in range(num_res_blocks):
                 self.ups.append(ResidualBlock(in_ch, out_ch, time_emb_dim, dropout=dropout))
