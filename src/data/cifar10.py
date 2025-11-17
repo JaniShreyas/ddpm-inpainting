@@ -35,6 +35,7 @@ def default_transform(cfg: DataConfig | None = None):
     # core transforms
     t_list.extend(
         [
+            transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD),
         ]
