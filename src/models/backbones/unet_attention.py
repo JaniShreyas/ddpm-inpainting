@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from .blocks import SinusoidalPositionEmbeddings, ResidualBlock, AttentionBlock
+from src.models.utils.blocks import SinusoidalPositionEmbeddings, ResidualBlock, AttentionBlock
 
 
 class UNetWithAttention(nn.Module):

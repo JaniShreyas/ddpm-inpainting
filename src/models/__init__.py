@@ -1,5 +1,5 @@
-from .unet import UNet
-from .unet_attention import UNetWithAttention
+from src.models.backbones.unet import UNet
+from src.models.backbones.unet_attention import UNetWithAttention
 from .ddpm import DiffusionModel
 
 import torch.nn as nn

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from .blocks import SinusoidalPositionEmbeddings, ResidualBlock
+from src.models.utils.blocks import SinusoidalPositionEmbeddings, ResidualBlock
 
 class UNet(nn.Module):
     def __init__(
