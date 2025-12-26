@@ -81,6 +81,7 @@ class AutoEncoderKL(nn.Module):
     def encode(self, x):
         h = self.encoder(x)
         mu, log_var = torch.chunk(h, 2, dim=1)
+        return mu, log_var
 
     def decode(self, z):
         return self.decoder(z)
