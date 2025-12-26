@@ -71,9 +71,9 @@ class UNetWithAttention(nn.Module):
         # The bottleneck adds an Attention layer by default. A little different from the paper, but it should only help
         # I could try and removing it later on to see if there's any change. It can't really make it better (except improved training and inference tiems I suppose)
         self.bottleneck = nn.ModuleList([
-            ResidualBlock(bottleneck_in, bottleneck_out, time_emb_dim),
+            ResidualBlock(bottleneck_in, bottleneck_out, time_emb_dim, dropout=dropout),
             AttentionBlock(bottleneck_out),
-            ResidualBlock(bottleneck_out, bottleneck_out, time_emb_dim),
+            ResidualBlock(bottleneck_out, bottleneck_out, time_emb_dim, dropout=dropout),
         ])
 
         # Decoder
