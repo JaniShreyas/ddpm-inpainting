@@ -19,9 +19,9 @@ class SinusoidalPositionEmbeddings(nn.Module):
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, time_emb_dim, dropout: float = 0.1):
+    def __init__(self, in_channels, out_channels, time_emb_dim=None, dropout: float = 0.1):
         super().__init__()
-        self.time_mlp = nn.Linear(time_emb_dim, out_channels)
+        self.time_mlp = nn.Linear(time_emb_dim, out_channels) if time_emb_dim else None
         self.conv1 = nn.Conv2d(
             in_channels=in_channels, out_channels=out_channels, kernel_size=3, padding=1
         )
@@ -43,13 +43,16 @@ class ResidualBlock(nn.Module):
         )
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, t):
+    def forward(self, x, t=None):
         # Here, t already comes after SinusoidalEmbedding + a linear layer (and relu).
         # This time_mlp is used to change shape of the vector (pretty sure)
         h = self.act(self.norm1(self.conv1(x)))
-        time_emb = self.act(self.time_mlp(t))
-        time_emb = time_emb.view(time_emb.shape[0], -1, 1, 1)
-        h += time_emb
+
+        if self.time_mlp is not None and t is not None:
+            time_emb = self.act(self.time_mlp(t))
+            time_emb = time_emb.view(time_emb.shape[0], -1, 1, 1)
+            h += time_emb
+            
         h = self.act(self.norm2(self.conv2(h)))
         h = self.dropout(h)
         return h + self.residual_conv(x)
