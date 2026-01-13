@@ -77,7 +77,12 @@ class Encoder(nn.Module):
 
 
     def forward(self, x):
-        pass
+        x = self.initial_conv(x)
+        x = self.down(x)
+        x = self.bottleneck(x)
+        x = self.latent(self.silu(self.group_norm(x)))
+        return x
+        
 
 
 class Decoder(nn.Module):
