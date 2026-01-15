@@ -1,6 +1,7 @@
 from src.models.backbones.unet import UNet
 from src.models.backbones.unet_attention import UNetWithAttention
-from .ddpm import DiffusionModel
+from src.models.ddpm import DiffusionModel
+from src.models.autoencoder_kl import AutoEncoderKL
 
 import torch.nn as nn
 
@@ -16,10 +17,15 @@ def create_ddpm_unet_attention(config):
     model = DiffusionModel(backbone=backbone, config=config)
     return model
 
+def create_autoencoder_kl(config):
+    model = AutoEncoderKL(config=config)
+    return model
+
 # Model Registry
 MODEL_REGISTRY = {
     "ddpm_unet_base": create_ddpm_unet_base,
     "ddpm_unet_attention": create_ddpm_unet_attention,
+    "autoencoder_kl": create_autoencoder_kl,
 }
 
 def get_model(config) -> nn.Module:
