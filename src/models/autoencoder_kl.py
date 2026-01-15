@@ -35,11 +35,15 @@ class Encoder(nn.Module):
         else:
             self.latent_channels = latent_channels
 
-
         # Initial convolution to base_channels
-        self.initial_conv = nn.Conv2d(self.in_channels, self.base_channels, 3, padding=1)
+        self.initial_conv = nn.Conv2d(
+            self.in_channels, self.base_channels, 3, padding=1
+        )
 
-        channels = [self.base_channels] + [self.base_channels*channel_multipliers[i] for i in range(len(channel_multipliers))]
+        channels = [self.base_channels] + [
+            self.base_channels * channel_multipliers[i]
+            for i in range(len(channel_multipliers))
+        ]
         current_res = self.image_size
 
         self.down = nn.Sequential()
@@ -47,34 +51,41 @@ class Encoder(nn.Module):
         # m blocks of (Residual + Downsample)
         for i in range(len(channels) - 1):
             in_ch = channels[i]
-            out_ch = channels[i+1]
-            
+            out_ch = channels[i + 1]
+
             downs = []
             for _ in range(self.num_res_blocks):
                 downs.append(ResidualBlock(in_ch, out_ch, dropout=dropout))
-                in_ch=out_ch
+                in_ch = out_ch
             if current_res in attention_resolutions:
                 downs.append(AttentionBlock(out_ch))
 
             downs.append(nn.Conv2d(out_ch, out_ch, kernel_size=4, stride=2, padding=1))
-            
+
             current_res //= 2  # Since we always half the resolution
 
             self.down.add_module(f"{i}", nn.Sequential(*downs))
-        
+
         # Residual, Attention, Residual
         self.bottleneck = nn.Sequential(
-            ResidualBlock(in_channels=channels[-1], out_channels=channels[-1], dropout=dropout),
+            ResidualBlock(
+                in_channels=channels[-1], out_channels=channels[-1], dropout=dropout
+            ),
             AttentionBlock(channels[-1]),
-            ResidualBlock(in_channels=channels[-1], out_channels=channels[-1], dropout=dropout),
+            ResidualBlock(
+                in_channels=channels[-1], out_channels=channels[-1], dropout=dropout
+            ),
         )
 
         # GroupNorm, SiLU, Conv2D to latent_channels (will be given double z or not by the VAE class)
         # 32 groups is a standard heuristic choice
-        self.group_norm = nn.GroupNorm(num_groups=32, num_channels=channels[-1], eps=1e-6, affine=True)
+        self.group_norm = nn.GroupNorm(
+            num_groups=32, num_channels=channels[-1], eps=1e-6, affine=True
+        )
         self.silu = nn.SiLU()
-        self.latent = nn.Conv2d(channels[-1], self.latent_channels, kernel_size=3, padding=1)
-
+        self.latent = nn.Conv2d(
+            channels[-1], self.latent_channels, kernel_size=3, padding=1
+        )
 
     def forward(self, x):
         x = self.initial_conv(x)
@@ -82,7 +93,6 @@ class Encoder(nn.Module):
         x = self.bottleneck(x)
         x = self.latent(self.silu(self.group_norm(x)))
         return x
-        
 
 
 class Decoder(nn.Module):
@@ -91,21 +101,89 @@ class Decoder(nn.Module):
         in_channels: int,
         out_channels: int,
         latent_channels: int,
+        double_z: bool,
         base_channels: int,
         channel_multipliers: list[int],
         attention_resolutions: list[int],
-        time_emb_dim: int,
         num_res_blocks: int,
         dropout: int,
+        image_size: int,
     ):
-        pass
+        # The opposite of the Encoder just assuming the input is reparameterized (so z channels)
+        # The channel multipliers go in the opposite direction obviously
+
+        super().__init__()
+
+        self.out_channels = out_channels
+        self.base_channels = base_channels
+
+        self.num_res_blocks = num_res_blocks
+
+        self.image_size = image_size
+
+        channels = [self.base_channels] + [
+            self.base_channels * channel_multipliers[i]
+            for i in range(len(channel_multipliers))
+        ]
+
+        self.initial_conv = nn.Conv2d(
+            in_channels=latent_channels, out_channels=channels[-1], kernel_size=3, padding=1
+        )
+
+        # Residual, Attention, Residual
+        self.bottleneck = nn.Sequential(
+            ResidualBlock(
+                in_channels=channels[-1], out_channels=channels[-1], dropout=dropout
+            ),
+            AttentionBlock(channels[-1]),
+            ResidualBlock(
+                in_channels=channels[-1], out_channels=channels[-1], dropout=dropout
+            ),
+        )
+
+        self.up = nn.Sequential()
+        reversed_channels = list(reversed(channels))
+
+        current_res = self.image_size // (2 ** (len(channel_multipliers)))
+
+        # m blocks of (Residual + Upsample)
+        for i in range(len(reversed_channels) - 1):
+            in_ch = reversed_channels[i]
+            out_ch = reversed_channels[i + 1]
+
+            ups = []
+            for _ in range(self.num_res_blocks):
+                ups.append(ResidualBlock(in_ch, out_ch, dropout=dropout))
+                in_ch = out_ch
+            if current_res in attention_resolutions:
+                ups.append(AttentionBlock(out_ch))
+
+            ups.append(nn.Upsample(scale_factor=2, mode="nearest"))
+            ups.append(nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1))
+
+            current_res *= 2  # Since we always double the resolution
+
+            self.up.add_module(f"{i}", nn.Sequential(*ups))
+
+
+        self.group_norm = nn.GroupNorm(
+            num_groups=32, num_channels=channels[0], eps=1e-6, affine=True
+        )
+        self.silu = nn.SiLU()
+        self.output = nn.Conv2d(
+            channels[0], self.out_channels, kernel_size=3, padding=1
+        )
+
 
     def forward(self, x):
-        pass
+        x = self.initial_conv(x)
+        x = self.bottleneck(x)
+        x = self.up(x)
+        x = self.output(self.silu(self.group_norm(x)))
 
 
 # Combines the Encoder and Decoder
-# returns loss in forward() and has a sample() method
+# returns loss in forward() and has encode() and decode() methods
 class AutoEncoderKL(nn.Module):
     def __init__(
         self,
@@ -116,12 +194,13 @@ class AutoEncoderKL(nn.Module):
         self.decoder = Decoder(**config)
 
     def forward(self, x):
-
         # Encode
         mu, log_var = self.encode(x)
 
         # KL Loss
-        kl_loss = -0.5 * torch.mean(torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=[1,2,3]))
+        kl_loss = -0.5 * torch.mean(
+            torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=[1, 2, 3])
+        )
 
         # Reparameterization trick
         std = (0.5 * log_var).exp()
@@ -135,9 +214,8 @@ class AutoEncoderKL(nn.Module):
         reconstruction_loss = F.mse_loss(x_hat, x, reduction="sum") / x.shape[0]
 
         total_loss = kl_loss + reconstruction_loss
-        
+
         return total_loss
-    
 
     def encode(self, x):
         h = self.encoder(x)
