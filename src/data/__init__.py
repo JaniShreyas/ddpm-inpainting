@@ -1,14 +1,14 @@
 # Factory to get desired dataloader
 
-from .mnist import get_dataloaders as get_mnist_dataloaders, get_stats as get_mnist_stats
-from .cifar10 import get_dataloaders as get_cifar10_dataloaders, get_stats as get_cifar10_stats
+from .mnist import get_dataloaders as get_mnist_dataloaders, get_stats as get_mnist_stats, get_datasets as get_mnist_datasets
+from .cifar10 import get_dataloaders as get_cifar10_dataloaders, get_stats as get_cifar10_stats, get_datasets as get_cifar10_datasets
 from .config import DataConfig
-from torch.utils.data import DataLoader 
+from torch.utils.data import DataLoader, Dataset
 
 # The dataset registry
 DATASET_REGISTRY = {
-    "mnist": (get_mnist_dataloaders, get_mnist_stats),
-    "cifar10": (get_cifar10_dataloaders, get_cifar10_stats),
+    "mnist": (get_mnist_dataloaders, get_mnist_stats, get_mnist_datasets),
+    "cifar10": (get_cifar10_dataloaders, get_cifar10_stats, get_cifar10_datasets),
 }
 
 def get_dataloaders(cfg: DataConfig) -> DataLoader:
@@ -21,5 +21,17 @@ def get_dataloaders(cfg: DataConfig) -> DataLoader:
 
     return dataloader_fn(cfg)
 
+
 def get_stats(cfg: DataConfig) -> tuple:
     return DATASET_REGISTRY[cfg.name][1]()
+
+
+def get_datasets(cfg: DataConfig) -> Dataset:
+    print(f"Loading dataset: {cfg.name}")
+
+    if cfg.name not in DATASET_REGISTRY:
+        raise ValueError(f"Dataset {cfg.name} is not supported. Available datasets are: {list(DATASET_REGISTRY.keys())}")
+
+    dataset_fn = DATASET_REGISTRY[cfg.name][2]
+    
+    return dataset_fn(cfg)

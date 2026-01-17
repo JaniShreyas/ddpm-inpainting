@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.data.config import DataConfig
 from src.models.utils.blocks import ResidualBlock, AttentionBlock
 
 # Should contain an Encoder and Decoder class with config as input
@@ -20,6 +21,7 @@ class Encoder(nn.Module):
         num_res_blocks: int,
         dropout: int,
         image_size: int,
+        **kwargs,
     ):
         super().__init__()
 
@@ -108,6 +110,7 @@ class Decoder(nn.Module):
         num_res_blocks: int,
         dropout: int,
         image_size: int,
+        **kwargs,
     ):
         # The opposite of the Encoder just assuming the input is reparameterized (so z channels)
         # The channel multipliers go in the opposite direction obviously
@@ -127,7 +130,10 @@ class Decoder(nn.Module):
         ]
 
         self.initial_conv = nn.Conv2d(
-            in_channels=latent_channels, out_channels=channels[-1], kernel_size=3, padding=1
+            in_channels=latent_channels,
+            out_channels=channels[-1],
+            kernel_size=3,
+            padding=1,
         )
 
         # Residual, Attention, Residual
@@ -165,7 +171,6 @@ class Decoder(nn.Module):
 
             self.up.add_module(f"{i}", nn.Sequential(*ups))
 
-
         self.group_norm = nn.GroupNorm(
             num_groups=32, num_channels=channels[0], eps=1e-6, affine=True
         )
@@ -174,12 +179,12 @@ class Decoder(nn.Module):
             channels[0], self.out_channels, kernel_size=3, padding=1
         )
 
-
     def forward(self, x):
         x = self.initial_conv(x)
         x = self.bottleneck(x)
         x = self.up(x)
         x = self.output(self.silu(self.group_norm(x)))
+        return x
 
 
 # Combines the Encoder and Decoder
@@ -189,9 +194,18 @@ class AutoEncoderKL(nn.Module):
         self,
         config,
     ):
-        self.encoder = Encoder(**config)
+        super().__init__()
+        self.config = config
+        self.encoder = Encoder(**config.model, image_size=config.dataset.image_size)
+        self.decoder = Decoder(**config.model, image_size=config.dataset.image_size)
+        self.kl_weight = config.model.get("kl_weight")
 
-        self.decoder = Decoder(**config)
+    def reparameterize(self, mu, log_var):
+        # Reparameterization trick
+        std = (0.5 * log_var).exp()
+        eps = torch.randn_like(mu)
+        z = mu + std * eps
+        return z
 
     def forward(self, x):
         # Encode
@@ -202,10 +216,7 @@ class AutoEncoderKL(nn.Module):
             torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim=[1, 2, 3])
         )
 
-        # Reparameterization trick
-        std = (0.5 * log_var).exp()
-        eps = torch.randn_like(mu)
-        z = mu + std * eps
+        z = self.reparameterize(mu, log_var)
 
         # Decode
         x_hat = self.decode(z)
@@ -213,9 +224,13 @@ class AutoEncoderKL(nn.Module):
         # Reconstruction loss
         reconstruction_loss = F.mse_loss(x_hat, x, reduction="sum") / x.shape[0]
 
-        total_loss = kl_loss + reconstruction_loss
+        total_loss = self.kl_weight * kl_loss + reconstruction_loss
 
-        return total_loss
+        return {
+            "loss": total_loss,
+            "kl_loss": kl_loss,
+            "reconstruction_loss": reconstruction_loss,
+        }
 
     def encode(self, x):
         h = self.encoder(x)
@@ -224,3 +239,24 @@ class AutoEncoderKL(nn.Module):
 
     def decode(self, z):
         return self.decoder(z)
+
+    @torch.no_grad()
+    def sample(self, get_stats, device="cuda", sample_x=None, **kwargs):
+        if sample_x is None:
+            raise TypeError("sample_x must not be None")
+
+        # Encode
+        mu, log_var = self.encode(sample_x)
+
+        z = self.reparameterize(mu, log_var)
+
+        # Decode
+        x = self.decode(z)
+
+        # Denormalize images for viewing and saving
+        mean, std = get_stats(DataConfig(**self.config.dataset))
+        mean = torch.tensor(mean, device=x.device, dtype=x.dtype).view(1, -1, 1, 1)
+        std = torch.tensor(std, device=x.device, dtype=x.dtype).view(1, -1, 1, 1)
+        x = x * std + mean
+        x = x.clamp(0, 1)
+        return x

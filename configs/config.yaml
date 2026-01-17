@@ -6,13 +6,13 @@ hydra:
 
 defaults:
   - dataset: cifar10
-  - model: ddpm_cifar10_attention
+  - model: 'autoencoder_kl_cifar10'
   - training: default
   - sampling: default
   - _self_
 
 # Global settings
 device: 'cuda'
-experiment_name: 'ddpm_cifar10_attention_dropout'
+experiment_name: 'autoencoder_kl'
 seed: 42
 resume_from_run_id: null

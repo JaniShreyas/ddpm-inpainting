@@ -62,10 +62,10 @@ class DiffusionModel(nn.Module):
 
         # Calculate loss
         loss = F.mse_loss(noise, predicted_noise)
-        return loss
+        return {"loss": loss}
 
     @torch.no_grad()
-    def sample(self, num_images, image_size, get_stats, device="cuda"):
+    def sample(self, num_images, image_size, get_stats, device="cuda", **kwargs):
         """
         Inference method for generating new images
         """

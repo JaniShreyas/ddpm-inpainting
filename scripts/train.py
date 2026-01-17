@@ -9,7 +9,7 @@ import yaml
 # Replace with factory get_dataloaders to fit with config yaml
 from src.utils.set_seed import set_seed
 
-from src.data import get_dataloaders, get_stats
+from src.data import get_dataloaders, get_stats, get_datasets
 
 from src.models import get_model
 from src.training.trainer import Trainer
@@ -79,6 +79,7 @@ def main(config: DictConfig):
     # Setup dataloaders
     data_config = DataConfig(**config.dataset)
     train_dataloader, test_dataloader = get_dataloaders(data_config)
+    train_dataset, test_dataset = get_datasets(data_config)
 
     # Setup model
     model = get_model(config=config).to(config.device)
@@ -98,7 +99,8 @@ def main(config: DictConfig):
     # Instantiate and run the trainer
     trainer = Trainer(
         model=model,
-        dataloader=train_dataloader,
+        train_dataloader=train_dataloader,
+        test_dataset=test_dataset,
         optimizer=optimizer,
         get_stats=get_stats,
         config=config,

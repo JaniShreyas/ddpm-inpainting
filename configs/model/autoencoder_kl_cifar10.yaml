@@ -9,3 +9,4 @@ channel_multipliers: [1,2,4]
 attention_resolutions: []
 num_res_blocks: 2
 dropout: 0.0
+kl_weight: 1.0e-6
