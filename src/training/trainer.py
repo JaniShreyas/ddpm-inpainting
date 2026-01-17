@@ -158,13 +158,11 @@ class Trainer:
                     else:
                         losses_sum[loss_type] = value.item()
 
-            avg_losses = {loss_type: (total_value / len(self.train_dataloader)) for loss_type, total_value in losses_sum.items()}
+            avg_losses = {loss_type: (total_value / len(self.test_dataloader)) for loss_type, total_value in losses_sum.items()}
             print(f"Average validation loss: {avg_losses["loss"]}")
 
             for loss_type in avg_losses:
                 mlflow.log_metric(f"val_avg_{loss_type}", avg_losses[loss_type], step=epoch_num)
-            
-
 
     def sample_and_log_images(self, epoch_num):
         self.model.eval()

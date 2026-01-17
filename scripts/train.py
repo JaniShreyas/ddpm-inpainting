@@ -100,6 +100,7 @@ def main(config: DictConfig):
     trainer = Trainer(
         model=model,
         train_dataloader=train_dataloader,
+        test_dataloader=test_dataloader,
         test_dataset=test_dataset,
         optimizer=optimizer,
         get_stats=get_stats,
