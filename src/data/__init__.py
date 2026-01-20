@@ -1,21 +1,25 @@
-# Factory to get desired dataloader
+from torch import Tensor
 
-from .mnist import get_dataloaders as get_mnist_dataloaders, get_stats as get_mnist_stats, get_datasets as get_mnist_datasets
-from .cifar10 import get_dataloaders as get_cifar10_dataloaders, get_stats as get_cifar10_stats, get_datasets as get_cifar10_datasets
+from .mnist import get_dataloaders as get_mnist_dataloaders, get_stats as get_mnist_stats, get_datasets as get_mnist_datasets, denormalize as denormalize_mnist
+from .cifar10 import get_dataloaders as get_cifar10_dataloaders, get_stats as get_cifar10_stats, get_datasets as get_cifar10_datasets, denormalize as denormalize_cifar10
+
 from .config import DataConfig
 from torch.utils.data import DataLoader, Dataset
 
 # The dataset registry
 DATASET_REGISTRY = {
-    "mnist": (get_mnist_dataloaders, get_mnist_stats, get_mnist_datasets),
-    "cifar10": (get_cifar10_dataloaders, get_cifar10_stats, get_cifar10_datasets),
+    "mnist": (get_mnist_dataloaders, get_mnist_stats, get_mnist_datasets, denormalize_mnist),
+    "cifar10": (get_cifar10_dataloaders, get_cifar10_stats, get_cifar10_datasets, denormalize_cifar10),
 }
+
+def verify_dataset(cfg_name: str) -> None:
+    if cfg_name not in DATASET_REGISTRY:
+        raise ValueError(f"Dataset {cfg_name} is not supported. Available datasets are: {list(DATASET_REGISTRY.keys())}")
 
 def get_dataloaders(cfg: DataConfig) -> DataLoader:
     print(f"Loading dataset: {cfg.name}")
 
-    if cfg.name not in DATASET_REGISTRY:
-        raise ValueError(f"Dataset {cfg.name} is not supported. Available datasets are: {list(DATASET_REGISTRY.keys())}")
+    verify_dataset(cfg.name)
     
     dataloader_fn = DATASET_REGISTRY[cfg.name][0]
 
@@ -23,15 +27,18 @@ def get_dataloaders(cfg: DataConfig) -> DataLoader:
 
 
 def get_stats(cfg: DataConfig) -> tuple:
+    verify_dataset(cfg.name)
     return DATASET_REGISTRY[cfg.name][1]()
 
 
 def get_datasets(cfg: DataConfig) -> Dataset:
+    verify_dataset(cfg.name)
     print(f"Loading dataset: {cfg.name}")
-
-    if cfg.name not in DATASET_REGISTRY:
-        raise ValueError(f"Dataset {cfg.name} is not supported. Available datasets are: {list(DATASET_REGISTRY.keys())}")
 
     dataset_fn = DATASET_REGISTRY[cfg.name][2]
     
     return dataset_fn(cfg)
+
+def denormalize(cfg: DataConfig, x: Tensor) -> Dataset:
+    verify_dataset(cfg.name)
+    return DATASET_REGISTRY[cfg.name][3](x)

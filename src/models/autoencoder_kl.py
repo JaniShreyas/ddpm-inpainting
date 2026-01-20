@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
+from src.data import denormalize
 from src.data.config import DataConfig
 from src.models.utils.blocks import ResidualBlock, AttentionBlock
 
@@ -19,7 +21,7 @@ class Encoder(nn.Module):
         channel_multipliers: list[int],
         attention_resolutions: list[int],
         num_res_blocks: int,
-        dropout: int,
+        dropout: float,
         image_size: int,
         **kwargs,
     ):
@@ -108,7 +110,7 @@ class Decoder(nn.Module):
         channel_multipliers: list[int],
         attention_resolutions: list[int],
         num_res_blocks: int,
-        dropout: int,
+        dropout: float,
         image_size: int,
         **kwargs,
     ):
@@ -199,6 +201,11 @@ class AutoEncoderKL(nn.Module):
         self.encoder = Encoder(**config.model, image_size=config.dataset.image_size)
         self.decoder = Decoder(**config.model, image_size=config.dataset.image_size)
         self.kl_weight = config.model.get("kl_weight")
+        
+        self.lpips = LearnedPerceptualImagePatchSimilarity()
+        self.lpips_weight = config.model.get("lpips_weight")
+
+        self.data_config = DataConfig(**config.dataset)
 
     def reparameterize(self, mu, log_var):
         # Reparameterization trick
@@ -224,12 +231,16 @@ class AutoEncoderKL(nn.Module):
         # Reconstruction loss
         reconstruction_loss = F.mse_loss(x_hat, x, reduction="sum") / x.shape[0]
 
-        total_loss = self.kl_weight * kl_loss + reconstruction_loss
+        # Perceptual loss
+        perceptual_loss = self.lpips(denormalize(self.data_config, x_hat), denormalize(self.data_config, x))
+
+        total_loss = self.kl_weight * kl_loss + reconstruction_loss + self.lpips_weight * perceptual_loss
 
         return {
             "loss": total_loss,
             "kl_loss": kl_loss,
             "reconstruction_loss": reconstruction_loss,
+            "perceptual_loss": perceptual_loss,
         }
 
     def encode(self, x):
@@ -254,9 +265,4 @@ class AutoEncoderKL(nn.Module):
         x = self.decode(z)
 
         # Denormalize images for viewing and saving
-        mean, std = get_stats(DataConfig(**self.config.dataset))
-        mean = torch.tensor(mean, device=x.device, dtype=x.dtype).view(1, -1, 1, 1)
-        std = torch.tensor(std, device=x.device, dtype=x.dtype).view(1, -1, 1, 1)
-        x = x * std + mean
-        x = x.clamp(0, 1)
-        return x
+        return denormalize(self.data_config, x)

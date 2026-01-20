@@ -1,4 +1,6 @@
 from torchvision import datasets, transforms
+import torch
+
 from .config import DataConfig
 from .utils import make_dataloaders
 
@@ -7,6 +9,14 @@ def get_stats():
     return (0.1307,), (0.3081,)
 
 MNIST_MEAN, MNIST_STD = get_stats()
+
+def denormalize(x: torch.Tensor):
+    mean, std = get_stats()
+    mean = torch.tensor(mean, device=x.device, dtype=x.dtype).view(1, -1, 1, 1)
+    std = torch.tensor(std, device=x.device, dtype=x.dtype).view(1, -1, 1, 1)
+    x = x * std + mean
+    x = x.clamp(0, 1)
+    return x
 
 
 def default_transform(cfg: DataConfig | None = None):
