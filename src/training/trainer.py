@@ -1,11 +1,15 @@
+import math
 import torch
 import mlflow
-import torch.utils.data.dataloader
+import torchvision
 from tqdm import tqdm
 import os
-from torchvision.utils import save_image
+from torchvision.utils import save_image, make_grid
 from copy import deepcopy
-import random
+import matplotlib.pyplot as plt
+
+from src.data import denormalize
+from src.data.config import DataConfig
 
 
 class Trainer:
@@ -47,14 +51,37 @@ class Trainer:
             self.ema_model.load_state_dict(ema_state_dict)
             print("Resumed EMA model state from checkpoint")
 
-        self.fixed_sample_batch = next(iter(self.train_dataloader))
+        self.fixed_sample_batch_train, self.fixed_sample_batch_test = next(iter(self.train_dataloader)), next(iter(self.test_dataloader))
         # Handle cases where dataloader returns (data, label)
-        if isinstance(self.fixed_sample_batch, (list, tuple)):
-            self.fixed_sample_batch = self.fixed_sample_batch[0]
-        self.fixed_sample_batch = self.fixed_sample_batch.to(self.device)
+        if isinstance(self.fixed_sample_batch_train, (list, tuple)):
+            self.fixed_sample_batch_train = self.fixed_sample_batch_train[0]
+        self.fixed_sample_batch_train = self.fixed_sample_batch_train.to(self.device)
         # Take only the number of images we want to sample
         num_images = self.config["sampling"]["num_images"]
-        self.fixed_sample_batch = self.fixed_sample_batch[:num_images]
+        self.fixed_sample_batch_train = self.fixed_sample_batch_train[:num_images]
+
+        if isinstance(self.fixed_sample_batch_test, (list, tuple)):
+            self.fixed_sample_batch_test = self.fixed_sample_batch_test[0]
+        self.fixed_sample_batch_test = self.fixed_sample_batch_test.to(self.device)
+        self.fixed_sample_batch_test = self.fixed_sample_batch_test[:num_images]
+
+    def plot_fixed_batch(self):
+        # 1. Get the batch, detach from graph, move to CPU
+        images = self.fixed_sample_batch_test.detach().cpu()
+
+        images = denormalize(DataConfig(**self.config.dataset), images)
+
+        # 3. Create a grid of images
+        # nrow controls how many images per row
+        grid_img = torchvision.utils.make_grid(images, nrow=4, padding=2)
+
+        # 4. Convert to numpy and transpose dimensions
+        # PyTorch is (C, H, W), Matplotlib needs (H, W, C)
+        plt.figure(figsize=(10, 10))
+        plt.imshow(grid_img.permute(1, 2, 0).numpy())
+        plt.axis('off')
+        plt.title("Fixed Sample Batch")
+        plt.show()
 
     def _update_ema_weights(self):
         with torch.no_grad():
@@ -164,29 +191,62 @@ class Trainer:
             for loss_type in avg_losses:
                 mlflow.log_metric(f"val_avg_{loss_type}", avg_losses[loss_type], step=epoch_num)
 
+
     def sample_and_log_images(self, epoch_num):
         self.model.eval()
         with torch.no_grad():
-            generated_images = self.ema_model.sample(
+            # 1. Generate Train Samples
+            generated_train = self.ema_model.sample(
                 num_images=self.config["sampling"]["num_images"],
                 image_size=self.config["dataset"]["image_size"],
                 get_stats=self.get_stats,
                 device=self.device,
-                sample_x=self.fixed_sample_batch,
+                sample_x=self.fixed_sample_batch_train,
             )
 
-        # Save temporary file
-        temp_path = f"temp_sample_epoch_{epoch_num}.png"
-        save_image(generated_images, temp_path, nrow=4)
+            # 2. Generate Test Samples
+            generated_test = self.ema_model.sample(
+                num_images=self.config["sampling"]["num_images"],
+                image_size=self.config["dataset"]["image_size"],
+                get_stats=self.get_stats,
+                device=self.device,
+                sample_x=self.fixed_sample_batch_test,
+            )
 
-        # Log as an artifact to mlflow
-        mlflow.log_artifact(temp_path, artifact_path="samples")
+            # --- Formatting Logic ---
 
-        # Clean up temporary file
-        os.remove(temp_path)
-        print(f"Logged sample images for epoch {epoch_num} to MLFlow")
+            # Calculate how many images per row to make a square grid (e.g., if 16 images, nrow=4)
+            # You can hardcode nrow=4 if you prefer.
+            nrow = int(math.sqrt(self.config["sampling"]["num_images"]))
+
+            # Create the two separate 4x4 grids (C, H, W)
+            # make_grid adds padding between small images automatically
+            grid_train = make_grid(generated_train, nrow=nrow, padding=2)
+            grid_test = make_grid(generated_test, nrow=nrow, padding=2)
+
+            # Create a vertical separator (White line)
+            # It must match the height (dim 1) and channels (dim 0) of the grids
+            channels, height, _ = grid_train.shape
+            separator_width = 10 # Width of the separator in pixels
+            separator = torch.ones(channels, height, separator_width).to(self.device)
+
+            # Combine: Train | Separator | Test
+            # We concatenate along dimension 2 (the width dimension)
+            final_image = torch.cat([grid_train, separator, grid_test], dim=2)
+
+            # 3. Save and Log
+            temp_path = f"temp_sample_epoch_{epoch_num}.png"
+            
+            # Save the final pre-constructed grid
+            save_image(final_image, temp_path)
+
+            mlflow.log_artifact(temp_path, artifact_path="samples")
+
+            os.remove(temp_path)
+            print(f"Logged side-by-side sample images for epoch {epoch_num} to MLFlow")
 
     def train(self):
+        self.plot_fixed_batch()
         print(f"Starting training from epoch {self.start_epoch}...")
         for epoch in range(self.start_epoch, self.epochs + 1):
             self._train_epoch(epoch)

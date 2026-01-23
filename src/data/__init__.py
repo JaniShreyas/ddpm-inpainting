@@ -39,6 +39,6 @@ def get_datasets(cfg: DataConfig) -> Dataset:
     
     return dataset_fn(cfg)
 
-def denormalize(cfg: DataConfig, x: Tensor) -> Dataset:
+def denormalize(cfg: DataConfig, x: Tensor) -> Tensor:
     verify_dataset(cfg.name)
     return DATASET_REGISTRY[cfg.name][3](x)

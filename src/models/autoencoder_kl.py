@@ -229,7 +229,7 @@ class AutoEncoderKL(nn.Module):
         x_hat = self.decode(z)
 
         # Reconstruction loss
-        reconstruction_loss = F.l1_loss(x_hat, x, reduction="mean")
+        reconstruction_loss = F.mse_loss(x_hat, x, reduction="mean")
 
         # Perceptual loss
         perceptual_loss = self.lpips(denormalize(self.data_config, x_hat), denormalize(self.data_config, x))
