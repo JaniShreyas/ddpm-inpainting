@@ -236,7 +236,12 @@ class AutoEncoderKL(nn.Module):
         reconstruction_loss = F.mse_loss(x_hat, x, reduction="mean")
 
         # Perceptual loss
-        perceptual_loss = self.lpips(denormalize(self.data_config, x_hat), denormalize(self.data_config, x))
+        # Compute with detached tensors
+        with torch.no_grad():
+            x_denorm = denormalize(self.data_config, x).detach()
+            x_hat_denorm = denormalize(self.data_config, x_hat).detach()
+
+        perceptual_loss = self.lpips(x_hat_denorm, x_denorm)
 
         total_loss = self.kl_weight * kl_loss + reconstruction_loss + self.lpips_weight * perceptual_loss
 
