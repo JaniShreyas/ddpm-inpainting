@@ -43,7 +43,7 @@ class Trainer:
 
         # Setup EMA decay
         self.ema_decay = self.config["training"].get("ema_decay")
-        self.ema_model = deepcopy(self.model).eval().requires_grad_(False)
+        self.ema_model = deepcopy(self.model).to(self.device).eval().requires_grad_(False)
         print(f"EMA enabled with decay rate: {self.ema_decay}")
 
         # Reload EMA decay
