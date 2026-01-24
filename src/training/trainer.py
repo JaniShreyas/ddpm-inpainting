@@ -86,7 +86,7 @@ class Trainer:
     def _update_ema_weights(self):
         with torch.no_grad():
             for ema_param, model_param in zip(self.ema_model.parameters(), self.model.parameters()):
-                ema_param.data.mul_(self.ema_decay).add_(model_param, alpha=(1-self.ema_decay))
+                ema_param.data.mul_(self.ema_decay).add_(model_param.data, alpha=(1-self.ema_decay))
 
     def _train_epoch(self, epoch_num):
         self.model.train()
@@ -95,7 +95,7 @@ class Trainer:
         # tqdm for progress bar
         progress_bar = tqdm(self.train_dataloader, desc=f"Epoch {epoch_num}")
 
-        for batch in progress_bar:
+        for batch_idx, batch in enumerate(progress_bar):
             # The data might have (image, label) or just (image,) so deal with both
             clean_images = (
                 batch[0].to(self.device)
@@ -104,7 +104,7 @@ class Trainer:
             )
 
             # Optimizer zero grad
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=True)
 
             # Model directly returns loss (helps in generalizing training loop in this ddpm case)
             losses = self.model(clean_images)
@@ -127,6 +127,11 @@ class Trainer:
                 else:
                     losses_sum[loss_type] = value.item()
 
+            del losses, loss, clean_images
+            
+            if batch_idx % 50 == 0 and torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
 
         avg_losses = {loss_type: (total_value / len(self.train_dataloader)) for loss_type, total_value in losses_sum.items()}
         print(f"Epoch {epoch_num} - Average loss: {avg_losses["loss"]:.4f}")
@@ -134,6 +139,9 @@ class Trainer:
         # Log metrics for MLFlow
         for loss_type in avg_losses:
             mlflow.log_metric(f"avg_{loss_type}", avg_losses[loss_type], step=epoch_num)
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     def _save_and_log_checkpoint(self, epoch_num, is_final=False):
         base_checkpoint_artifact_dir = "checkpoints"
@@ -184,6 +192,8 @@ class Trainer:
                         losses_sum[loss_type] += value.item()
                     else:
                         losses_sum[loss_type] = value.item()
+
+                del losses, clean_images
 
             avg_losses = {loss_type: (total_value / len(self.test_dataloader)) for loss_type, total_value in losses_sum.items()}
             print(f"Average validation loss: {avg_losses["loss"]}")
@@ -244,6 +254,8 @@ class Trainer:
 
             os.remove(temp_path)
             print(f"Logged side-by-side sample images for epoch {epoch_num} to MLFlow")
+
+            del generated_train, generated_test, grid_train, grid_test, final_image
 
     def train(self): 
         print(f"Starting training from epoch {self.start_epoch}...")
