@@ -13,6 +13,6 @@ defaults:
 
 # Global settings
 device: 'cuda'
-experiment_name: 'autoencoder_kl'
+experiment_name: 'autoencoder_kl_16x16x4_vgg'
 seed: 42
 resume_from_run_id: null

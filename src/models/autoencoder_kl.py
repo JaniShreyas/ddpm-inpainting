@@ -202,7 +202,7 @@ class AutoEncoderKL(nn.Module):
         self.decoder = Decoder(**config.model, image_size=config.dataset.image_size)
         self.kl_weight = config.model.get("kl_weight")
         
-        self.lpips = LearnedPerceptualImagePatchSimilarity()
+        self.lpips = LearnedPerceptualImagePatchSimilarity(net_type="vgg")
         self.lpips_weight = config.model.get("lpips_weight")
 
         self.data_config = DataConfig(**config.dataset)
