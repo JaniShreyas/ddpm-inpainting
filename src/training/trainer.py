@@ -67,7 +67,7 @@ class Trainer:
 
     def plot_fixed_batch(self):
         # 1. Get the batch, detach from graph, move to CPU
-        images = self.fixed_sample_batch_test.detach().cpu()
+        images = self.fixed_sample_batch_train.detach().cpu()
 
         images = denormalize(DataConfig(**self.config.dataset), images)
 
@@ -245,8 +245,7 @@ class Trainer:
             os.remove(temp_path)
             print(f"Logged side-by-side sample images for epoch {epoch_num} to MLFlow")
 
-    def train(self):
-        self.plot_fixed_batch()
+    def train(self): 
         print(f"Starting training from epoch {self.start_epoch}...")
         for epoch in range(self.start_epoch, self.epochs + 1):
             self._train_epoch(epoch)
