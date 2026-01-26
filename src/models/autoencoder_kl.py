@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
+import lpips
 
 from src.data import denormalize
 from src.data.config import DataConfig
@@ -202,8 +202,9 @@ class AutoEncoderKL(nn.Module):
         self.decoder = Decoder(**config.model, image_size=config.dataset.image_size)
         self.kl_weight = config.model.get("kl_weight")
         
-        self.lpips = LearnedPerceptualImagePatchSimilarity(net_type="vgg")
-        self.lpips.eval() 
+        self.lpips = lpips.LPIPS(net="vgg").eval()
+
+        # I am just paranoid
         for param in self.lpips.parameters():
             param.requires_grad = False
 
@@ -239,7 +240,7 @@ class AutoEncoderKL(nn.Module):
         x_denorm = denormalize(self.data_config, x).detach()
         x_hat_denorm = denormalize(self.data_config, x_hat)
         
-        perceptual_loss = self.lpips(x_hat_denorm, x_denorm)
+        perceptual_loss = self.lpips(x_hat_denorm, x_denorm).mean()
 
         total_loss = self.kl_weight * kl_loss + reconstruction_loss + self.lpips_weight * perceptual_loss
 
