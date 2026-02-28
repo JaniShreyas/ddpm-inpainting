@@ -127,10 +127,10 @@ class Trainer:
                 else:
                     losses_sum[loss_type] = value.item()
 
-            del losses, loss, clean_images
+            # del losses, loss, clean_images
             
-            if batch_idx % 50 == 0 and torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            # if batch_idx % 50 == 0 and torch.cuda.is_available():
+            #     torch.cuda.empty_cache()
 
 
         avg_losses = {loss_type: (total_value / len(self.train_dataloader)) for loss_type, total_value in losses_sum.items()}
@@ -140,8 +140,8 @@ class Trainer:
         for loss_type in avg_losses:
             mlflow.log_metric(f"avg_{loss_type}", avg_losses[loss_type], step=epoch_num)
 
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        # if torch.cuda.is_available():
+        #     torch.cuda.empty_cache()
 
     def _save_and_log_checkpoint(self, epoch_num, is_final=False):
         base_checkpoint_artifact_dir = "checkpoints"
@@ -193,7 +193,7 @@ class Trainer:
                     else:
                         losses_sum[loss_type] = value.item()
 
-                del losses, clean_images
+                # del losses, clean_images
 
             avg_losses = {loss_type: (total_value / len(self.test_dataloader)) for loss_type, total_value in losses_sum.items()}
             print(f"Average validation loss: {avg_losses["loss"]}")
@@ -255,7 +255,7 @@ class Trainer:
             os.remove(temp_path)
             print(f"Logged side-by-side sample images for epoch {epoch_num} to MLFlow")
 
-            del generated_train, generated_test, grid_train, grid_test, final_image
+            # del generated_train, generated_test, grid_train, grid_test, final_image
 
     def train(self): 
         print(f"Starting training from epoch {self.start_epoch}...")
