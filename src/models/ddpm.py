@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 from src.data.config import DataConfig
 from src.noise_schedules import get_noise_schedule
+from src.models.losses import EpsilonLoss, VLoss, XLoss, PredictionOrLossType, get_loss_function
 
 from tqdm import tqdm
 
@@ -27,11 +28,17 @@ class DiffusionModel(nn.Module):
             betas * (1.0 - alphas_cumprod_prev) / (1.0 - alphas_cumprod)
         )
 
+        self.loss_type = PredictionOrLossType(config.model.loss_type)
+        self.prediction_type = PredictionOrLossType(config.model.prediction_type)
+
+        self.loss_fn = get_loss_function(self.loss_type, alphas_cumprod, self.prediction_type)
+
         self.register_buffer('betas', betas)
         self.register_buffer('alphas', alphas)
         self.register_buffer('alphas_cumprod', alphas_cumprod)
         self.register_buffer('alphas_cumprod_prev', alphas_cumprod_prev)
         self.register_buffer('posterior_variance', posterior_variance)
+
 
     def q_sample(self, x_start, t, noise=None):
         if noise is None:
@@ -57,11 +64,22 @@ class DiffusionModel(nn.Module):
         # Add noise to images
         x_noisy, noise = self.q_sample(x_start=x, t=t)
 
-        # Predict noise
-        predicted_noise = self.backbone(x_noisy, t)
+        # Predict output
+        pred = self.backbone(x_noisy, t)
+
+        if self.loss_type == PredictionOrLossType.EPSILON:
+            target = noise
+        elif self.loss_type == PredictionOrLossType.V:
+            sqrt_alphas_cumprod_t = self.alphas_cumprod[t].sqrt().view(B, 1, 1, 1)
+            sqrt_one_minus_alphas_cumprod_t = (1.0 - self.alphas_cumprod[t]).sqrt().view(B, 1, 1, 1)
+            target = sqrt_alphas_cumprod_t * noise - sqrt_one_minus_alphas_cumprod_t * x
+        elif self.loss_type == PredictionOrLossType.X:
+            target = x
+        else:
+            raise ValueError(f"Unsupported loss type: {self.loss_type}")
 
         # Calculate loss
-        loss = F.mse_loss(noise, predicted_noise)
+        loss = self.loss_fn(pred, target, x_noisy, t)
         return {"loss": loss}
 
     @torch.no_grad()
