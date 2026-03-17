@@ -99,11 +99,25 @@ class DiffusionModel(nn.Module):
             t_tensor = torch.full((num_images,), t, device=device, dtype=torch.long)
 
             # Predict the noise from the UNet
-            predicted_noise = self.backbone(x, t_tensor)
+            model_output = self.backbone(x, t_tensor)
 
             # The denoising formula to get a cleaner image. From the paper
             alpha_t = self.alphas[t]
             alpha_cumprod_t = self.alphas_cumprod[t]
+
+            if self.prediction_type == PredictionOrLossType.EPSILON:
+                predicted_noise = model_output
+                
+            elif self.prediction_type == PredictionOrLossType.X:
+                # Model predicted clean image x_0. Solve for epsilon:
+                # x_t = sqrt(alpha_cumprod_t) * x_0 + sqrt(1 - alpha_cumprod_t) * epsilon
+                predicted_noise = (x - alpha_cumprod_t.sqrt() * model_output) / (1.0 - alpha_cumprod_t).sqrt()
+                
+            elif self.prediction_type == PredictionOrLossType.V:
+                # Model predicted velocity (v). Solve for epsilon mathematically:
+                predicted_noise = alpha_cumprod_t.sqrt() * model_output + (1.0 - alpha_cumprod_t).sqrt() * x  
+            else:
+                raise ValueError(f"Unsupported prediction type: {self.prediction_type}")
 
             coeff = (1 - alpha_t) / (1 - alpha_cumprod_t).sqrt()
             mean = (1 / alpha_t.sqrt()) * (x - coeff * predicted_noise)

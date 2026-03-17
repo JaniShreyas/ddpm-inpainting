@@ -1,12 +1,16 @@
+import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from .prediction_type import PredictionOrLossType
 
-class XLoss:
+class XLoss(nn.Module):
     def __init__(self, alphas_cumprod, prediction_type: PredictionOrLossType):
-        self.alphas_cumprod = alphas_cumprod
+        super().__init__()
         self.prediction_type = prediction_type
-        self.sqrt_alphas_cumprod = alphas_cumprod.sqrt()
-        self.sqrt_one_minus_alphas_cumprod = (1.0 - alphas_cumprod).sqrt()
+        
+        self.register_buffer('sqrt_alphas_cumprod', torch.sqrt(alphas_cumprod))
+        self.register_buffer('sqrt_one_minus_alphas_cumprod', torch.sqrt(1.0 - alphas_cumprod))
+
         self.prediction_conversion_function = {
             PredictionOrLossType.EPSILON: self._epsilon_to_x,
             PredictionOrLossType.V: self.v_to_x,
@@ -25,7 +29,7 @@ class XLoss:
         pred = sqrt_alphas_cumprod_t * noisy_image - sqrt_one_minus_alphas_cumprod_t * pred
         return pred
 
-    def __call__(self, pred, target, noisy_image, t):
+    def forward(self, pred, target, noisy_image, t):
         # Convert prediction
         pred = self.prediction_conversion_function[self.prediction_type](pred, noisy_image, t)
         # Calculate loss

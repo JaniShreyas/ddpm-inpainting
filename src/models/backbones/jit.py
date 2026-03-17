@@ -1,5 +1,6 @@
 ### -----------------------------
 ### Taken from the JiT repository
+### Modified certain details to integrate into the framework
 ### -----------------------------
 
 import torch
@@ -169,7 +170,7 @@ class FinalLayer(nn.Module):
             nn.Linear(hidden_size, 2 * hidden_size, bias=True)
         )
 
-    @torch.compile
+    # @torch.compile
     def forward(self, x, c):
         shift, scale = self.adaLN_modulation(c).chunk(2, dim=1)
         x = modulate(self.norm_final(x), shift, scale)
@@ -191,7 +192,7 @@ class JiTBlock(nn.Module):
             nn.Linear(hidden_size, 6 * hidden_size, bias=True)
         )
 
-    @torch.compile
+    # @torch.compile
     def forward(self, x,  c, feat_rope=None):
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=-1)
         x = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa), rope=feat_rope)
@@ -325,12 +326,18 @@ class JiT(nn.Module):
         imgs = x.reshape(shape=(x.shape[0], c, h * p, h * p))
         return imgs
 
-    def forward(self, x, t, y):
+    def forward(self, x, t, y=None):
         """
         x: (N, C, H, W)
         t: (N,)
-        y: (N,)
+        y: (N,) - Optional Class Labels
         """
+
+        if y is None:
+            # Default dummy "0" class. If everything is the same, the model will ignore this
+            # And I don't need to change too much of the architecture
+            y = torch.zeros(x.shape[0], dtype=torch.long, device=x.device)
+
         # class and time embeddings
         t_emb = self.t_embedder(t)
         y_emb = self.y_embedder(y)

@@ -1,12 +1,17 @@
+import torch
 import torch.nn.functional as F
+import torch.nn as nn
 from .prediction_type import PredictionOrLossType
 
-class VLoss:
+
+class VLoss(nn.Module):
     def __init__(self, alphas_cumprod, prediction_type: PredictionOrLossType):
-        self.alphas_cumprod = alphas_cumprod
+        super().__init__()
         self.prediction_type = prediction_type
-        self.sqrt_alphas_cumprod = alphas_cumprod.sqrt()
-        self.sqrt_one_minus_alphas_cumprod = (1.0 - alphas_cumprod).sqrt()
+        
+        self.register_buffer('sqrt_alphas_cumprod', torch.sqrt(alphas_cumprod))
+        self.register_buffer('sqrt_one_minus_alphas_cumprod', torch.sqrt(1.0 - alphas_cumprod))
+        
         self.prediction_conversion_function = {
             PredictionOrLossType.EPSILON: self._epsilon_to_v,
             PredictionOrLossType.V: lambda pred, noisy_image, t: pred,  # Identity function for v prediction
@@ -25,7 +30,7 @@ class VLoss:
         pred = (sqrt_alphas_cumprod_t * noisy_image - pred) / sqrt_one_minus_alphas_cumprod_t
         return pred
 
-    def __call__(self, pred, target, noisy_image, t):
+    def forward(self, pred, target, noisy_image, t):
         # Convert prediction
         pred = self.prediction_conversion_function[self.prediction_type](pred, noisy_image, t)
         loss = F.mse_loss(pred, target)

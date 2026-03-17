@@ -1,8 +1,25 @@
 name: "ddpm_jit"
+type: "diffusion"
 
 loss_type: "v"
 prediction_type: "x"
 
 backbone:
+  input_size: 150       # Must match your dataset image size
+  in_channels: 1
+  patch_size: 10     
+  hidden_size: 160    
+  depth: 8             
+  num_heads: 8
+  mlp_ratio: 4.0
+  num_classes: 1       # Set to 1 for unconditional
+  in_context_len: 0    # Set to 0 if you don't need in-context conditioning
 
+# Diffusion specific settings passed to get_noise_schedule()
 schedule:
+  name: "linear"
+  T: 1000
+  beta_start: 0.0001
+  beta_end: 0.02
+
+metrics: {}
