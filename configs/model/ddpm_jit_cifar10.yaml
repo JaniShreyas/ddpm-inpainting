@@ -5,21 +5,17 @@ loss_type: "v"
 prediction_type: "x"
 
 backbone:
-  input_size: 150       # Must match your dataset image size
-  in_channels: 1
-  patch_size: 10     
-  hidden_size: 160    
-  depth: 8             
-  num_heads: 8
+  input_size: 32       # Must match your dataset image size
+  in_channels: 3
+  patch_size: 4     
+  hidden_size: 32    
+  depth: 4             
+  num_heads: 2
   mlp_ratio: 4.0
   num_classes: 1       # Set to 1 for unconditional
   in_context_len: 0    # Set to 0 if you don't need in-context conditioning
+  bottleneck_dim: 16
 
 # Diffusion specific settings passed to get_noise_schedule()
-schedule:
-  name: "linear"
-  T: 1000
-  beta_start: 0.0001
-  beta_end: 0.02
-
-metrics: {}
+defaults:
+ - schedule: cosine

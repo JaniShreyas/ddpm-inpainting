@@ -1,2 +1,2 @@
 num_images: 16
-sample_every_n_epochs: 5
+sample_every_n_epochs: 10

@@ -24,3 +24,5 @@ multirun/
 # dvc only stuff (other folders will also be in dvc)
 checkpoints/
 output/
+
+train.log

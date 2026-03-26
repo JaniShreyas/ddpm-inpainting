@@ -11,4 +11,4 @@ backbone:
   dropout: 0.1
 
 defaults:
-  - schedule: linear
+  - schedule: cosine

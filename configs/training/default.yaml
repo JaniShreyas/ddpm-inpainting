@@ -1,3 +1,8 @@
 epochs: 10
 lr: 2.0e-4
 ema_decay: 0.9999  # Set to 0 if you don't want EMA model
+validate_every_n_epochs: 1
+
+# Will only be used when training diffusion models
+calculate_fid_every_n_epochs: 100
+fid_num_images: 1000

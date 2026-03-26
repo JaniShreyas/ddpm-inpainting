@@ -266,6 +266,7 @@ class Trainer:
 
         batch_size = self.config["dataset"]["batch_size"]
         num_batches = math.ceil(self.fid_num_images / batch_size)
+        mean, std = self.get_stats(DataConfig(**self.config.dataset))
 
         with torch.no_grad():
             # Feed real Images from the Validation Loader
@@ -275,7 +276,7 @@ class Trainer:
                     break
                 
                 images = images.to(self.device)
-                images = (images * 0.5 + 0.5).clamp(0, 1)
+                images = (images * std[0] + mean[0]).clamp(0, 1)
                 
                 # InceptionV3 requires 3 channels. We repeat the 1 grayscale channel 3 times.
                 if images.shape[1] == 1:
@@ -296,7 +297,6 @@ class Trainer:
                     get_stats=self.get_stats,
                     device=self.device
                 )
-                fake_images = (fake_images * 0.5 + 0.5).clamp(0, 1)
 
                 # Ensure fake images are 3 channels as well
                 if fake_images.shape[1] == 1:
