@@ -334,6 +334,6 @@ class Trainer:
         self._save_and_log_checkpoint(self.epochs, is_final=True)
         self._validate_checkpoint(self.epochs, if_final=True)
         self.sample_and_log_images("final")
-        self.calculate_fid("final")
+        # self.calculate_fid("final")
 
         print("Training complete.")
