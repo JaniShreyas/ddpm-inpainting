@@ -39,6 +39,9 @@ class DiffusionModel(nn.Module):
         self.register_buffer('alphas_cumprod_prev', alphas_cumprod_prev)
         self.register_buffer('posterior_variance', posterior_variance)
 
+        sigmas = ((1.0 - alphas_cumprod) / alphas_cumprod).sqrt()
+        self.register_buffer('sigmas', sigmas)
+
 
     def q_sample(self, x_start, t, noise=None):
         if noise is None:
@@ -59,7 +62,20 @@ class DiffusionModel(nn.Module):
     def forward(self, x):
         B, C, H, W = x.shape
         # Uniformly sample t
-        t = torch.randint(0, len(self.betas), (B,), device=x.device).long()
+        # t = torch.randint(0, len(self.betas), (B,), device=x.device).long()
+
+        # From the EDM paper, sampling t using a log-normal distribution is better.
+        p_mean = self.config.model.time_step_log_normal.mean
+        p_std = self.config.model.time_step_log_normal.std
+
+        rnd_normal = torch.randn((B,), device=x.device)
+        sigma_target = (rnd_normal * p_std + p_mean).exp()
+
+        # Map the continuous target sigmas to the closest discrete timestep t
+        # self.sigmas is shape (T,), sigma_target is shape (B,)
+        # We calculate the distance matrix (B, T) to find the closest t for each batch item
+        distances = torch.abs(self.sigmas.unsqueeze(0) - sigma_target.unsqueeze(1))
+        t = torch.argmin(distances, dim=1).long()
 
         # Add noise to images
         x_noisy, noise = self.q_sample(x_start=x, t=t)
