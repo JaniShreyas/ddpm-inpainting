@@ -77,17 +77,11 @@ class DiffusionModel(nn.Module):
         distances = torch.abs(self.sigmas.unsqueeze(0) - sigma_target.unsqueeze(1))
         t = torch.argmin(distances, dim=1).long()
 
-        sigma_discrete = self.sigmas[t].view(B, 1, 1, 1)
-
         # Add noise to images
         x_noisy, noise = self.q_sample(x_start=x, t=t)
 
-        sigma_data = 0.5
-        c_in = 1 / (sigma_discrete ** 2 + sigma_data ** 2).sqrt()
-
         # Predict output
-        F_x = self.backbone(x=(c_in * x_noisy), t=t)
-        pred = F_x * sigma_data
+        pred = self.backbone(x, t)
 
         if self.loss_type == PredictionOrLossType.EPSILON:
             target = noise
