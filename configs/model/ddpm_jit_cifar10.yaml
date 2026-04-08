@@ -4,17 +4,21 @@ type: "diffusion"
 loss_type: "v"
 prediction_type: "x"
 
+time_step_log_normal:
+  mean: -1.2
+  std: 1.2
+
 backbone:
   input_size: 32       # Must match your dataset image size
   in_channels: 3
   patch_size: 4     
-  hidden_size: 32    
-  depth: 4             
-  num_heads: 2
+  hidden_size: 256    
+  depth: 6             
+  num_heads: 16
   mlp_ratio: 4.0
   num_classes: 1       # Set to 1 for unconditional
   in_context_len: 0    # Set to 0 if you don't need in-context conditioning
-  bottleneck_dim: 16
+  bottleneck_dim: 256
 
 # Diffusion specific settings passed to get_noise_schedule()
 defaults:
