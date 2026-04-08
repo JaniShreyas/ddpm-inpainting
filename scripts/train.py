@@ -41,6 +41,7 @@ def main(config: DictConfig):
         # Getting new total epochs to run
         new_total_epochs = config.training.epochs
         new_fid_num_images = config.training.fid_num_images
+        solver_num_steps = config.sampling.solver_num_steps
 
         # Download the config from the old run
         local_path = mlflow.artifacts.download_artifacts(run_id=run_id, artifact_path="config/config.yaml")
@@ -53,6 +54,7 @@ def main(config: DictConfig):
 
         # Sampling images for FID
         config.training.fid_num_images = new_fid_num_images
+        config.sampling.solver_num_steps = solver_num_steps
         
         # Download the latest checkpoint
         checkpoint_path = mlflow.artifacts.download_artifacts(run_id=run_id, artifact_path="checkpoints/latest_checkpoint.pt")
