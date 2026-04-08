@@ -7,7 +7,7 @@ class DataConfig:
     name: str = "mnist"             # dataset key used in factory
     data_root: str = "datasets"
     batch_size: int = 32
-    num_workers: int = 4
+    num_workers: int = 0
     pin_memory: bool = True
     persistent_workers: bool = True
     download: bool = True
