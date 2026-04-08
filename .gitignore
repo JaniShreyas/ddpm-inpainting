@@ -26,3 +26,4 @@ checkpoints/
 output/
 
 train.log
+debug.log
