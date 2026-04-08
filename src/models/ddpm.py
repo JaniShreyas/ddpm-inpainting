@@ -99,7 +99,7 @@ class DiffusionModel(nn.Module):
         return {"loss": loss}
 
     @torch.no_grad()
-    def sample(self, num_images, image_size, get_stats, device="cuda", **kwargs):
+    def sample_ancestral(self, num_images, image_size, get_stats, device="cuda", **kwargs):
         """
         Inference method for generating new images
         """
@@ -151,4 +151,73 @@ class DiffusionModel(nn.Module):
         std = torch.tensor(std, device=x.device, dtype=x.dtype).view(1,-1,1,1)
         x = x * std + mean
         x = x.clamp(0,1)
+        return x
+    
+
+    # DDIM sampler
+    @torch.no_grad()
+    def sample(self, num_images, image_size, get_stats, device="cuda", **kwargs):
+        """
+        Fast, deterministic inference using DDIM.
+        Mathematically stable for skipping steps in standard diffusion schedules.
+        """
+
+        num_steps = self.config.sampling.solver_num_steps
+
+        # Create a linear spacing of your discrete timesteps
+        total_steps = len(self.betas)
+        step_indices = torch.linspace(total_steps - 1, 0, num_steps, dtype=torch.long, device=device)
+
+        # Start with pure random noise
+        x = torch.randn(
+            num_images, self.backbone.in_channels, image_size, image_size, device=device
+        )
+
+        # The DDIM loop
+        for i in tqdm(range(len(step_indices)), desc=f"DDIM Sampling ({num_steps} steps)"):
+            t = step_indices[i]
+            # Get the exact timestep we are jumping to. If at the end, drop to -1.
+            t_prev = step_indices[i + 1] if i < len(step_indices) - 1 else -1
+
+            t_tensor = torch.full((num_images,), t, device=device, dtype=torch.long)
+
+            # Predict the output from the UNet
+            model_output = self.backbone(x, t_tensor)
+
+            # Look up alpha_bar for current step and the step we are jumping to
+            alpha_cumprod_t = self.alphas_cumprod[t]
+            # If t_prev is -1, we are at the fully clean image, so alpha_bar is 1.0
+            alpha_cumprod_t_prev = self.alphas_cumprod[t_prev] if t_prev >= 0 else torch.tensor(1.0, device=device)
+
+            # Calculate both predicted noise AND predicted clean image (x0)
+            if self.prediction_type == PredictionOrLossType.EPSILON:
+                predicted_noise = model_output
+                pred_x0 = (x - (1.0 - alpha_cumprod_t).sqrt() * predicted_noise) / alpha_cumprod_t.sqrt()
+                
+            elif self.prediction_type == PredictionOrLossType.X:
+                pred_x0 = model_output
+                predicted_noise = (x - alpha_cumprod_t.sqrt() * pred_x0) / (1.0 - alpha_cumprod_t).sqrt()
+                
+            elif self.prediction_type == PredictionOrLossType.V:
+                predicted_noise = alpha_cumprod_t.sqrt() * model_output + (1.0 - alpha_cumprod_t).sqrt() * x
+                pred_x0 = alpha_cumprod_t.sqrt() * x - (1.0 - alpha_cumprod_t).sqrt() * model_output
+                
+            else:
+                raise ValueError(f"Unsupported prediction type: {self.prediction_type}")
+
+            # =================================================================
+            # The Core DDIM Update Step
+            # Point straight to x0, then strictly add back the required noise 
+            # for the specific timestep we are jumping to.
+            # =================================================================
+            direction_pointing_to_xt = (1.0 - alpha_cumprod_t_prev).sqrt() * predicted_noise
+            x = alpha_cumprod_t_prev.sqrt() * pred_x0 + direction_pointing_to_xt
+
+        # Denormalize images for viewing and saving
+        mean, std = get_stats(DataConfig(**self.config.dataset))
+        mean = torch.tensor(mean, device=x.device, dtype=x.dtype).view(1, -1, 1, 1)
+        std = torch.tensor(std, device=x.device, dtype=x.dtype).view(1, -1, 1, 1)
+        x = x * std + mean
+        x = x.clamp(0, 1)
+        
         return x
