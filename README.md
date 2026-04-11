@@ -1,4 +1,4 @@
-# Generative MLOps: A Reproducible Diffusion Training Framework
+# Diffusion MLOps: A Reproducible Diffusion Training Framework
 
 This is a robust, professional-grade MLOps framework (hopefully :D) with structure and modularity to add and customize models, algorithms, datasets, metrics, and much more as needed, while keeping everything structured and with apt Experiment tracking and Config management. The primary goal is to engineer a scalable and reproducible pipeline for systematic deep learning research.
 
