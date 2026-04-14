@@ -5,7 +5,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .prediction_type import PredictionOrLossType
+from .prediction_or_loss_type import PredictionOrLossType
 
 # The corresponding changes from x and v to epsilon require the cumulative noise alpha
 # These can be defined in the EpsilonLoss class

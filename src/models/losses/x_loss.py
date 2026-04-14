@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .prediction_type import PredictionOrLossType
+from .prediction_or_loss_type import PredictionOrLossType
 
 class XLoss(nn.Module):
     def __init__(self, alphas_cumprod, prediction_type: PredictionOrLossType):

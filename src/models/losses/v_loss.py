@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-from .prediction_type import PredictionOrLossType
+from .prediction_or_loss_type import PredictionOrLossType
 
 
 class VLoss(nn.Module):
