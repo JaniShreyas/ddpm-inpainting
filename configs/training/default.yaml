@@ -2,6 +2,7 @@ epochs: 200
 lr: 2.0e-4
 ema_decay: 0.999  # Set to 0 if you don't want EMA model
 validate_every_n_epochs: 50
+accumulation_steps: 8   # For now the batch size is in the dataset config, I'll eventually get it here :)
 
 # Will only be used when training diffusion models
 calculate_fid_every_n_epochs: 100

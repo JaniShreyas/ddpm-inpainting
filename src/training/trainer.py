@@ -34,6 +34,7 @@ class Trainer:
         self.sample_every_n_epochs = config["sampling"]["sample_every_n_epochs"]
         self.validate_every_n_epochs = config["training"]["validate_every_n_epochs"]
         self.model_type = config["model"]["type"]
+        self.accumulation_steps = config["training"].get("accumulation_steps", 1)
         self.calculate_fid_every_n_epochs = self.config["training"].get("calculate_fid_every_n_epochs", 50)
         self.fid_num_images = self.config["training"].get("fid_num_images", 1000)
 
@@ -103,6 +104,8 @@ class Trainer:
         # tqdm for progress bar
         progress_bar = tqdm(self.train_dataloader, desc=f"Epoch {epoch_num}")
 
+        self.optimizer.zero_grad(set_to_none=True)
+
         for batch_idx, batch in enumerate(progress_bar):
             # The data might have (image, label) or just (image,) so deal with both
             clean_images = (
@@ -111,21 +114,19 @@ class Trainer:
                 else batch.to(self.device)
             )
 
-            # Optimizer zero grad
-            self.optimizer.zero_grad(set_to_none=True)
-
             # Model directly returns loss (helps in generalizing training loop in this ddpm case)
             losses = self.model(clean_images)
             loss = losses["loss"]
 
-            # Loss backward
-            loss.backward()
+            # Gradient accumulation logic
+            scaled_loss = loss / self.accumulation_steps
+            scaled_loss.backward()
 
-            # Optimizer step
-            self.optimizer.step()
-
-            # Update ema weights after every step
-            self._update_ema_weights()
+            # Only step the optimizer and update EMA after required batches
+            if ((batch_idx + 1) % self.accumulation_steps == 0) or ((batch_idx + 1) == len(self.train_dataloader)):
+                self.optimizer.step()
+                self.optimizer.zero_grad(set_to_none=True)
+                self._update_ema_weights()
 
             progress_bar.set_postfix(loss=loss.item())
 
@@ -269,9 +270,9 @@ class Trainer:
         mean, std = self.get_stats(DataConfig(**self.config.dataset))
 
         with torch.no_grad():
-            # Feed real Images from the Validation Loader
+            # Feed real Images from the Train Loader (this might be the standard approach?)
             real_count = 0
-            for images, _ in self.test_dataloader:
+            for images, _ in self.train_dataloader:
                 if real_count >= self.fid_num_images:
                     break
                 
@@ -334,6 +335,6 @@ class Trainer:
         self._save_and_log_checkpoint(self.epochs, is_final=True)
         self._validate_checkpoint(self.epochs, if_final=True)
         self.sample_and_log_images("final")
-        # self.calculate_fid("final")
+        self.calculate_fid("final")
 
         print("Training complete.")
