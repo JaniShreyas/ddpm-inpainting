@@ -1,0 +1,26 @@
+name: "edm_song_unet"
+type: "diffusion"
+
+time_step_log_normal:
+  P_mean: -1.2
+  P_std: 1.2
+  sigma_data: 0.5
+
+backbone:
+  img_resolution: 32                  # Image resolution.
+  img_channels: 3                     # Number of color channels.
+  label_dim: 0                        # Number of class labels, 0 = unconditional.
+  use_fp16: True                     # Execute the underlying model at FP16 precision?
+  sigma_min: 0                        # Minimum supported noise level.
+  sigma_max: .inf                     # Maximum supported noise level.
+  sigma_data: 0.5                     # Expected standard deviation of the training data.
+  model_type: 'SongUNet'              # Class name of the underlying model.
+  num_blocks: 4      
+  model_channels: 64
+  channel_mult: [1, 2, 2, 2]
+  attn_resolutions: [16]
+  encoder_type: 'standard'
+  decoder_type: 'standard'
+
+defaults:
+ - schedule: cosine

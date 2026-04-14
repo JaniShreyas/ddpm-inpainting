@@ -1,7 +1,7 @@
 from .epsilon_loss import EpsilonLoss
 from .v_loss import VLoss
 from .x_loss import XLoss
-from .prediction_type import PredictionOrLossType
+from .prediction_or_loss_type import PredictionOrLossType
 
 LOSS_REGISTRY = {
     PredictionOrLossType.EPSILON: EpsilonLoss,
