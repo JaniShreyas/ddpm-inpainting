@@ -9,6 +9,8 @@ from src.models.edm import EDMModel
 
 import torch.nn as nn
 
+from src.models.rectified_flow_jit import JiTFlowModel
+
 # Builder functions
 
 def create_ddpm_unet_base(config):
@@ -36,13 +38,19 @@ def create_edm_song_unet(config):
     model = EDMModel(backbone=backbone, config=config)
     return model
 
+def create_flow_jit(config):
+    backbone = JiT(**config.model.backbone)
+    model = JiTFlowModel(backbone=backbone, config=config)
+    return model
+
 # Model Registry
 MODEL_REGISTRY = {
     "ddpm_unet_base": create_ddpm_unet_base,
     "ddpm_unet_attention": create_ddpm_unet_attention,
     "autoencoder_kl": create_autoencoder_kl,
     "ddpm_jit": create_ddpm_jit,
-    "edm_song_unet": create_edm_song_unet
+    "edm_song_unet": create_edm_song_unet,
+    "flow_jit": create_flow_jit
 }
 
 def get_model(config) -> nn.Module:

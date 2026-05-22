@@ -1,6 +1,6 @@
-from .epsilon_loss import EpsilonLoss
-from .v_loss import VLoss
-from .x_loss import XLoss
+from .ddpm_epsilon_loss import EpsilonLoss
+from .ddpm_v_loss import VLoss
+from .ddpm_x_loss import XLoss
 from .prediction_or_loss_type import PredictionOrLossType
 
 LOSS_REGISTRY = {

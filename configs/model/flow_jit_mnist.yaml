@@ -1,0 +1,29 @@
+name: "flow_jit"
+type: "diffusion" 
+
+# Rectified Flow Parameters
+loss_type: "v"
+prediction_type: "x"
+
+# The JiT Log-Normal sampling variables
+time_step_log_normal:
+  mean: -0.8  # Using the exact defaults from the JiT paper
+  std: 0.8
+
+sampling:
+  solver_num_steps: 10
+  method: "heun" # 'heun' for quality, 'euler' for speed
+
+backbone:
+  input_size: 32       # Standard MNIST padded from 28x28 to 32x32
+  
+  in_channels: 1       
+  
+  patch_size: 4        # 32/4 = 8x8 patches (64 tokens total, extremely fast)
+  hidden_size: 32    
+  depth: 4            
+  num_heads: 8         # Lowered to 8 (256/8 = 32 dim per head, better for tiny models)
+  mlp_ratio: 4.0
+  num_classes: 1       # Unconditional
+  in_context_len: 0    # No in-context conditioning needed here
+  bottleneck_dim: 32 
