@@ -5,7 +5,7 @@ This is a robust, professional-grade MLOps framework (hopefully :D) with structu
 
 The framework is designed to be highly modular and extensible, allowing for easy adaptation to different models (e.g., text-to-image, inpainting) and datasets. It leverages a modern MLOps toolchain, including Hydra for composable configuration management and MLflow for comprehensive experiment tracking, to ensure every result is auditable and reproducible.
 
-The project, out of the box, supports MNIST digits and CIFAR10 as datasets (you can obviously easily implement a custom dataloader and add it to the data factory), a traditional DDPM training algorithm with DDIM sampling, and backbones for UNet and JiT (from the Back to Basics paper: (https://arxiv.org/pdf/2511.13720). There will be more models and backbones (EDM training, DiT backbone) and datasets (CelebA) added in the future.
+The framework, out of the box, supports MNIST digits and CIFAR10 as datasets (you can obviously easily implement a custom dataloader and add it to the data factory), a traditional DDPM training algorithm with DDIM sampling, and backbones for UNet and JiT (from the Back to Basics paper: (https://arxiv.org/pdf/2511.13720). There will be more models and backbones (EDM training, DiT backbone) and datasets (CelebA) added in the future.
 The priority will be on models and techniques suitable for training on low-resource environments (like consumer GPUs), and I'll be adding new stuff as I go through research papers.
 There will also be some experiment logs, which I'll update here later as of their location in the future.
 
